@@ -11,10 +11,8 @@ export default function Layout() {
       <main
         style={{
           flex: 1,
-          marginLeft: 0,
           paddingBottom: 72, // MobileNav 높이 확보
         }}
-        // md 이상에서 사이드바 너비(220px)만큼 밀기
         className="md:ml-[220px] md:pb-0"
       >
         <Outlet />
