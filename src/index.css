@@ -45,6 +45,25 @@ body {
   min-height: 100vh;
 }
 
+/* ─── Auth ─── */
+.auth-brand-panel {
+  display: none;
+}
+
+.auth-form-panel {
+  width: 100% !important;
+}
+
+@media (min-width: 768px) {
+  .auth-brand-panel {
+    display: flex;
+  }
+
+  .auth-form-panel {
+    width: 480px !important;
+  }
+}
+
 /* ─── Layout ─── */
 .sidebar-nav {
   display: none;

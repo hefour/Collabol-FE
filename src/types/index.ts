@@ -28,6 +28,18 @@ export type Department =
   | '건축학부'
   | '기타';
 
+export const DEPARTMENTS: Department[] = [
+  '컴퓨터학부',
+  '소프트웨어학부',
+  '경영학부',
+  '산업정보시스템학과',
+  '전자정보공학부',
+  '기계공학부',
+  '화학공학과',
+  '건축학부',
+  '기타',
+];
+
 export interface User {
   id: string;
   name: string;
