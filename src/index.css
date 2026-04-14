@@ -62,6 +62,7 @@ body {
 @media (min-width: 768px) {
   .sidebar-nav {
     display: flex;
+    flex-direction: column;
   }
 
   .layout-main {
