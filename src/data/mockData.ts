@@ -84,6 +84,7 @@ export const projects: Project[] = [
     ],
     tags: ['React', 'Spring Boot', '팀플'],
     startDate: '2026-03-01',
+    dueDate: '2026-06-01',
     createdAt: '2026-03-01T00:00:00Z',
   },
   {
@@ -97,6 +98,7 @@ export const projects: Project[] = [
     ],
     tags: ['Flutter', '기획', 'UX'],
     startDate: '2026-04-15',
+    dueDate: '2026-05-15',
     createdAt: '2026-04-01T00:00:00Z',
   },
   {

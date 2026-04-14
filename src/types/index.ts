@@ -68,6 +68,7 @@ export interface Project {
   ownerId: string;
   tags: string[];          // 기술/주제 태그
   startDate: string;       // ISO 8601 date
+  dueDate?: string;        // ISO 8601 date (마감 기한)
   endDate?: string;        // ISO 8601 date (완료 시)
   createdAt: string;
 }
