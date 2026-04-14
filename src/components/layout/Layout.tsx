@@ -8,13 +8,7 @@ export default function Layout() {
       <Sidebar />
 
       {/* 메인 컨텐츠 */}
-      <main
-        style={{
-          flex: 1,
-          paddingBottom: 72, // MobileNav 높이 확보
-        }}
-        className="md:ml-[220px] md:pb-0"
-      >
+      <main className="layout-main" style={{ flex: 1 }}>
         <Outlet />
       </main>
 

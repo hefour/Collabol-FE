@@ -44,3 +44,36 @@ body {
   color: var(--text-primary);
   min-height: 100vh;
 }
+
+/* ─── Layout ─── */
+.sidebar-nav {
+  display: none;
+}
+
+.layout-main {
+  margin-left: 0;
+  padding-bottom: 72px;
+}
+
+.mobile-nav {
+  display: flex;
+}
+
+@media (min-width: 768px) {
+  .sidebar-nav {
+    display: flex;
+  }
+
+  .layout-main {
+    margin-left: 220px;
+    padding-bottom: 0;
+  }
+
+  .mobile-nav {
+    display: none;
+  }
+
+  .md-page-padding {
+    padding: 32px 36px;
+  }
+}

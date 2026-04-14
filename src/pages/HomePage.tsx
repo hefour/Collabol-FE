@@ -38,7 +38,7 @@ export default function HomePage() {
     .slice(0, 4);
 
   return (
-    <div style={{ padding: '32px 36px', maxWidth: 900 }}>
+    <div style={{ padding: '24px 20px', maxWidth: 900 }} className="md-page-padding">
 
       {/* ─── Topbar ─── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>

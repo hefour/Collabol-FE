@@ -50,7 +50,7 @@ function getInitials(name: string) {
 export default function Sidebar() {
   return (
     <aside
-      className="hidden md:flex flex-col"
+      className="sidebar-nav"
       style={{
         width: 220,
         minHeight: '100vh',

@@ -38,7 +38,7 @@ const navItems = [
 export default function MobileNav() {
   return (
     <nav
-      className="md:hidden"
+      className="mobile-nav"
       style={{
         position: 'fixed',
         bottom: 0,
@@ -46,7 +46,6 @@ export default function MobileNav() {
         right: 0,
         background: 'var(--surface)',
         borderTop: '1px solid var(--border)',
-        display: 'flex',
         zIndex: 40,
         paddingBottom: 'env(safe-area-inset-bottom)',
       }}
