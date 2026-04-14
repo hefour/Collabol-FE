@@ -1,8 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { DEPARTMENTS } from '../types';
 
-const inputStyle: React.CSSProperties = {
+// ─── 상수 ─────────────────────────────────────────────────────────────────────
+
+const GRADE_OPTIONS = ['1학년', '2학년', '3학년', '4학년 이상'];
+const CODE_DURATION = 180; // 3분
+
+// ─── 스타일 헬퍼 ──────────────────────────────────────────────────────────────
+
+const inputBase: React.CSSProperties = {
   width: '100%',
   padding: '11px 14px',
   borderRadius: 'var(--radius-sm)',
@@ -13,6 +19,13 @@ const inputStyle: React.CSSProperties = {
   outline: 'none',
   transition: 'border-color 0.15s',
 };
+
+function focusBorder(e: React.FocusEvent<HTMLInputElement>) {
+  e.currentTarget.style.borderColor = 'var(--green)';
+}
+function blurBorder(e: React.FocusEvent<HTMLInputElement>) {
+  e.currentTarget.style.borderColor = 'var(--border2)';
+}
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -25,6 +38,14 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+function formatTime(sec: number) {
+  const m = Math.floor(sec / 60).toString().padStart(2, '0');
+  const s = (sec % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+// ─── 컴포넌트 ─────────────────────────────────────────────────────────────────
+
 export default function RegisterPage() {
   const navigate = useNavigate();
 
@@ -33,30 +54,73 @@ export default function RegisterPage() {
     email: '',
     password: '',
     confirmPassword: '',
-    studentId: '',
     department: '',
     grade: '',
   });
+
+  // 이메일 인증
+  const [codeSent, setCodeSent] = useState(false);
+  const [code, setCode] = useState('');
+  const [verified, setVerified] = useState(false);
+  const [timer, setTimer] = useState(0);
+  const [codeError, setCodeError] = useState('');
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const [error, setError] = useState('');
 
-  function set(key: string, value: string) {
+  function setField(key: string, value: string) {
     setForm(prev => ({ ...prev, [key]: value }));
     setError('');
   }
 
-  function focusBorder(e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) {
-    e.currentTarget.style.borderColor = 'var(--green)';
+  // 타이머 정리
+  useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
+
+  function startTimer() {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setTimer(CODE_DURATION);
+    timerRef.current = setInterval(() => {
+      setTimer(prev => {
+        if (prev <= 1) { clearInterval(timerRef.current!); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
   }
-  function blurBorder(e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) {
-    e.currentTarget.style.borderColor = 'var(--border2)';
+
+  function handleSendCode() {
+    if (!form.email) { setError('이메일을 입력해주세요.'); return; }
+    // TODO: 백엔드 API 호출 — POST /api/v1/auth/email/send
+    setCodeSent(true);
+    setVerified(false);
+    setCode('');
+    setCodeError('');
+    startTimer();
+  }
+
+  function handleVerifyCode() {
+    if (!code) { setCodeError('인증번호를 입력해주세요.'); return; }
+    if (timer === 0) { setCodeError('인증 시간이 만료됐어요. 다시 받아주세요.'); return; }
+    // TODO: 백엔드 API 호출 — POST /api/v1/auth/email/verify
+    // 현재는 mock: 6자리면 통과
+    if (code.length === 6) {
+      setVerified(true);
+      setCodeError('');
+      if (timerRef.current) clearInterval(timerRef.current);
+    } else {
+      setCodeError('인증번호가 올바르지 않아요.');
+    }
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const { name, email, password, confirmPassword, studentId, department, grade } = form;
+    const { name, email, password, confirmPassword, department, grade } = form;
 
-    if (!name || !email || !password || !confirmPassword || !studentId || !department || !grade) {
+    if (!name || !email || !password || !confirmPassword || !department || !grade) {
       setError('모든 항목을 입력해주세요.');
+      return;
+    }
+    if (!verified) {
+      setError('이메일 인증을 완료해주세요.');
       return;
     }
     if (password !== confirmPassword) {
@@ -118,43 +182,135 @@ export default function RegisterPage() {
             회원가입
           </div>
           <div style={{ fontSize: 14, color: 'var(--text-tertiary)' }}>
-            숭실대 학번으로 가입하세요
+            이메일 인증 후 collabol을 시작하세요
           </div>
         </div>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+          {/* 이름 */}
           <Field label="이름">
             <input
               type="text"
               value={form.name}
-              onChange={e => set('name', e.target.value)}
+              onChange={e => setField('name', e.target.value)}
               placeholder="홍길동"
-              style={inputStyle}
+              style={inputBase}
               onFocus={focusBorder}
               onBlur={blurBorder}
             />
           </Field>
 
+          {/* 이메일 + 인증번호 받기 */}
           <Field label="이메일">
-            <input
-              type="email"
-              value={form.email}
-              onChange={e => set('email', e.target.value)}
-              placeholder="example@soongsil.ac.kr"
-              style={inputStyle}
-              onFocus={focusBorder}
-              onBlur={blurBorder}
-            />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                type="email"
+                value={form.email}
+                onChange={e => { setField('email', e.target.value); setCodeSent(false); setVerified(false); }}
+                placeholder="example@soongsil.ac.kr"
+                style={{ ...inputBase, flex: 1 }}
+                disabled={verified}
+                onFocus={focusBorder}
+                onBlur={blurBorder}
+              />
+              <button
+                type="button"
+                onClick={handleSendCode}
+                disabled={verified}
+                style={{
+                  padding: '0 16px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--green)',
+                  background: verified ? 'var(--surface2)' : 'transparent',
+                  color: verified ? 'var(--text-tertiary)' : 'var(--green)',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: verified ? 'default' : 'pointer',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                }}
+              >
+                {codeSent && !verified ? '재발송' : '인증번호 받기'}
+              </button>
+            </div>
           </Field>
 
+          {/* 인증번호 입력 (코드 발송 후 표시) */}
+          {codeSent && !verified && (
+            <div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ position: 'relative', flex: 1 }}>
+                  <input
+                    type="text"
+                    value={code}
+                    onChange={e => { setCode(e.target.value.replace(/\D/g, '').slice(0, 6)); setCodeError(''); }}
+                    placeholder="인증번호 6자리"
+                    maxLength={6}
+                    style={{ ...inputBase, paddingRight: 56 }}
+                    onFocus={focusBorder}
+                    onBlur={blurBorder}
+                  />
+                  {timer > 0 && (
+                    <span style={{
+                      position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                      fontSize: 13, fontWeight: 500,
+                      color: timer < 30 ? 'var(--coral)' : 'var(--text-tertiary)',
+                    }}>
+                      {formatTime(timer)}
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleVerifyCode}
+                  style={{
+                    padding: '0 16px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: 'none',
+                    background: 'var(--green)',
+                    color: '#fff',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}
+                >
+                  인증하기
+                </button>
+              </div>
+              {codeError && (
+                <div style={{ fontSize: 12, color: 'var(--coral)', marginTop: 6 }}>{codeError}</div>
+              )}
+            </div>
+          )}
+
+          {/* 인증 완료 표시 */}
+          {verified && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              fontSize: 13, color: 'var(--green-mid)',
+              padding: '9px 14px',
+              background: 'var(--green-light)',
+              borderRadius: 'var(--radius-sm)',
+            }}>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="2 7 6 11 12 4" />
+              </svg>
+              이메일 인증이 완료됐어요
+            </div>
+          )}
+
+          {/* 비밀번호 */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Field label="비밀번호">
               <input
                 type="password"
                 value={form.password}
-                onChange={e => set('password', e.target.value)}
+                onChange={e => setField('password', e.target.value)}
                 placeholder="8자 이상"
-                style={inputStyle}
+                style={inputBase}
                 onFocus={focusBorder}
                 onBlur={blurBorder}
               />
@@ -163,53 +319,37 @@ export default function RegisterPage() {
               <input
                 type="password"
                 value={form.confirmPassword}
-                onChange={e => set('confirmPassword', e.target.value)}
+                onChange={e => setField('confirmPassword', e.target.value)}
                 placeholder="다시 입력"
-                style={inputStyle}
+                style={inputBase}
                 onFocus={focusBorder}
                 onBlur={blurBorder}
               />
             </Field>
           </div>
 
-          <Field label="학번">
-            <input
-              type="text"
-              value={form.studentId}
-              onChange={e => set('studentId', e.target.value)}
-              placeholder="20201234"
-              style={inputStyle}
-              onFocus={focusBorder}
-              onBlur={blurBorder}
-            />
-          </Field>
-
+          {/* 학과 + 학년 */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Field label="학과">
-              <select
+              <input
+                type="text"
                 value={form.department}
-                onChange={e => set('department', e.target.value)}
-                style={{ ...inputStyle, cursor: 'pointer' }}
+                onChange={e => setField('department', e.target.value)}
+                placeholder="예) 컴퓨터학부"
+                style={inputBase}
                 onFocus={focusBorder}
                 onBlur={blurBorder}
-              >
-                <option value="">학과 선택</option>
-                {DEPARTMENTS.map(d => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </select>
+              />
             </Field>
             <Field label="학년">
               <select
                 value={form.grade}
-                onChange={e => set('grade', e.target.value)}
-                style={{ ...inputStyle, cursor: 'pointer' }}
-                onFocus={focusBorder}
-                onBlur={blurBorder}
+                onChange={e => setField('grade', e.target.value)}
+                style={{ ...inputBase, cursor: 'pointer' }}
               >
-                <option value="">학년 선택</option>
-                {[1, 2, 3, 4].map(g => (
-                  <option key={g} value={g}>{g}학년</option>
+                <option value="">선택</option>
+                {GRADE_OPTIONS.map(g => (
+                  <option key={g} value={g}>{g}</option>
                 ))}
               </select>
             </Field>
