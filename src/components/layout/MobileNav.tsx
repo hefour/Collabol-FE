@@ -29,7 +29,7 @@ const ReviewIcon = () => (
 );
 
 const navItems = [
-  { to: '/',         label: '홈',      icon: <HomeIcon /> },
+  { to: '/home',     label: '홈',      icon: <HomeIcon /> },
   { to: '/projects', label: '프로젝트', icon: <ProjectsIcon /> },
   { to: '/profile',  label: '프로필',   icon: <ProfileIcon /> },
   { to: '/review',   label: '평가',     icon: <ReviewIcon /> },

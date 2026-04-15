@@ -20,12 +20,15 @@ export default function App() {
 
       {/* 앱 (사이드바 레이아웃) */}
       <Route element={<Layout />}>
-        <Route path="/" element={<HomePage />} />
+        <Route path="/home" element={<HomePage />} />
         <Route path="/projects" element={<ProjectsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/review" element={<ReviewPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
+
+      {/* 기본 경로 → 로그인 */}
+      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   )
 }

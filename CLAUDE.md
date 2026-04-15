@@ -55,3 +55,4 @@ CSS 변수로 관리 (src/index.css):
 - 브랜치: main / develop / feature/기능명
 - API prefix: /api/v1/... (연결 시)
 - Vite proxy: /api → http://localhost:8080
+ 

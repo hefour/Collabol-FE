@@ -140,7 +140,7 @@ export default function HomePage() {
 
         {/* 바디 */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-          {/* 종합 점수 */}
+          {/* 협업 점수 */}
           <div
             style={{
               background: 'var(--green-light)',
@@ -153,7 +153,7 @@ export default function HomePage() {
           >
             <div>
               <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--green-mid)', marginBottom: 6 }}>
-                종합 점수
+                협업 점수
               </div>
               <div>
                 <span style={{ fontSize: 36, fontWeight: 600, color: 'var(--green-dark)', lineHeight: 1 }}>
@@ -197,7 +197,7 @@ export default function HomePage() {
             ))}
           </div>
 
-          {/* 스킬 평가 */}
+          {/* 협업 능력 평가 */}
           <div style={{ gridColumn: '1 / -1' }}>
             <div
               style={{
@@ -205,7 +205,7 @@ export default function HomePage() {
                 letterSpacing: '0.3px', marginBottom: 14, textTransform: 'uppercase',
               }}
             >
-              스킬 평가
+              협업 능력 평가
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               {currentUser.skillRatings.map(rating => (
