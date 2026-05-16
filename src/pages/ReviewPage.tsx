@@ -1,6 +1,6 @@
 import { useParams } from "react-router-dom";
 import { useMemo } from "react";
-import { reviews, projects } from "../data/mockData";
+import { reviews, projects, tasks } from "../data/mockData";
 
 const categories = [
   "발표력",
@@ -66,10 +66,18 @@ export default function ReviewPage() {
     return set.size;
   }, [filtered]);
 
-  const taskCompletionRate = 92;
+  const taskCompletionRate = useMemo(() => {
+    const projectIds = project
+      ? [project]
+      : [...new Set(filtered.map((r) => r.projectId))];
+    const relevant = tasks.filter((t) => projectIds.includes(t.projectId));
+    if (!relevant.length) return 0;
+    const done = relevant.filter((t) => t.status === "done").length;
+    return Math.round((done / relevant.length) * 100);
+  }, [project, filtered]);
 
   return (
-    <div style={{ padding: 24, background: "#f8fafc", minHeight: "100vh" }}>
+    <div style={{ padding: 24, background: 'var(--bg)', minHeight: "100vh" }}>
       <h1 style={{ fontSize: 28, fontWeight: 900, marginBottom: 20 }}>
         📊 동료 평가
       </h1>
@@ -77,9 +85,9 @@ export default function ReviewPage() {
       {/* ================= 협업 프로필 ================= */}
       <div
         style={{
-          background: "white",
+          background: 'var(--surface)',
           padding: 28,
-          borderRadius: 20,
+          borderRadius: 'var(--radius-xl)',
           boxShadow: "0 10px 25px rgba(0,0,0,0.06)",
           border: "1px solid #eef2f7",
         }}
@@ -103,21 +111,21 @@ export default function ReviewPage() {
               border: "1px solid #bbf7d0",
             }}
           >
-            <p style={{ fontSize: 13, color: "#64748b" }}>평균 점수</p>
-            <h3 style={{ fontSize: 24, fontWeight: 900, color: "#16a34a" }}>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>평균 점수</p>
+            <h3 style={{ fontSize: 24, fontWeight: 900, color: 'var(--green)' }}>
               ⭐ {collaborationScore.toFixed(1)}
             </h3>
           </div>
 
           <div style={{ padding: 16, borderRadius: 16, background: "#fff", border: "1px solid #e2e8f0" }}>
-            <p style={{ fontSize: 13, color: "#64748b" }}>평가 수</p>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>평가 수</p>
             <h3 style={{ fontSize: 22, fontWeight: 800 }}>
               {filtered.length}건
             </h3>
           </div>
 
           <div style={{ padding: 16, borderRadius: 16, background: "#fff", border: "1px solid #e2e8f0" }}>
-            <p style={{ fontSize: 13, color: "#64748b" }}>참여 프로젝트</p>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>참여 프로젝트</p>
             <h3 style={{ fontSize: 22, fontWeight: 800 }}>
               {projectCount}개
             </h3>
@@ -127,11 +135,11 @@ export default function ReviewPage() {
             style={{
               padding: 16,
               borderRadius: 16,
-              background: taskCompletionRate >= 80 ? "#eff6ff" : "#fff",
+              background: taskCompletionRate >= 80 ? 'var(--blue-light)' : 'var(--surface)',
               border: "1px solid #e2e8f0",
             }}
           >
-            <p style={{ fontSize: 13, color: "#64748b" }}>태스크 완료율</p>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>태스크 완료율</p>
             <h3
               style={{
                 fontSize: 22,
@@ -149,9 +157,9 @@ export default function ReviewPage() {
       <div
         style={{
           marginTop: 24,
-          background: "white",
+          background: 'var(--surface)',
           padding: 28,
-          borderRadius: 20,
+          borderRadius: 'var(--radius-xl)',
           boxShadow: "0 10px 25px rgba(0,0,0,0.05)",
         }}
       >
@@ -163,7 +171,7 @@ export default function ReviewPage() {
           <div key={c} style={{ marginBottom: 14 }}>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <span style={{ fontWeight: 600 }}>{c}</span>
-              <span style={{ color: "#22c55e", fontWeight: 700 }}>
+              <span style={{ color: 'var(--green)', fontWeight: 700 }}>
                 {categoryAverages[c].toFixed(1)} / 5
               </span>
             </div>
@@ -203,7 +211,7 @@ export default function ReviewPage() {
             key={r.id}
             style={{
               marginTop: 16,
-              background: "white",
+              background: 'var(--surface)',
               padding: 22,
               borderRadius: 18,
               border: "1px solid #eef2f7",
@@ -212,7 +220,7 @@ export default function ReviewPage() {
           >
             <h3 style={{ fontWeight: 800 }}>{name}</h3>
 
-            <p style={{ color: "#64748b", fontSize: 13 }}>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
               {getProjectName(r.projectId)}
             </p>
 
