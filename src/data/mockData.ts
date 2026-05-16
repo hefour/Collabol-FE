@@ -95,7 +95,7 @@ export const users: User[] = [
 export const projects: Project[] = [
   {
     id: 'p1',
-    title: 'Collabol 플랫폼 개발',
+    title: 'Collaball 플랫폼 개발',
     description: '대학생 협업 프로필 플랫폼. 팀플 전 팀원 능력치 확인 서비스.',
     status: 'in_progress',
     ownerId: 'u1',

@@ -112,7 +112,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div style={{ padding: 24, background: "#f8fafc", minHeight: "100vh" }}>
+    <div style={{ padding: 24, background: 'var(--bg)', minHeight: "100vh" }}>
       <h1 style={{ fontSize: 28, fontWeight: 800 }}>프로필</h1>
 
       {/* ================= 사용자 정보 ================= */}
@@ -120,8 +120,8 @@ export default function ProfilePage() {
         style={{
           marginTop: 16,
           padding: 20,
-          background: "white",
-          borderRadius: 16,
+          background: 'var(--surface)',
+          borderRadius: 'var(--radius-lg)',
           boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
         }}
       >
@@ -136,7 +136,7 @@ export default function ProfilePage() {
             style={{
               marginTop: 10,
               padding: 12,
-              borderRadius: 8,
+              borderRadius: 'var(--radius-sm)',
               border: "1px solid #ddd",
               background: "#fafafa",
             }}
@@ -199,7 +199,7 @@ export default function ProfilePage() {
       </div>
 
       {/* ================= 스킬 ================= */}
-      <div style={{ marginTop: 20, background: "white", padding: 20, borderRadius: 16 }}>
+      <div style={{ marginTop: 20, background: 'var(--surface)', padding: 20, borderRadius: 'var(--radius-lg)' }}>
         <h3>스킬 평균</h3>
 
         {categories.map((c) => (
@@ -214,7 +214,7 @@ export default function ProfilePage() {
                 style={{
                   width: `${(skillAvg[c] / 5) * 100}%`,
                   height: "100%",
-                  background: "#22c55e",
+                  background: 'var(--green)',
                 }}
               />
             </div>
@@ -227,7 +227,7 @@ export default function ProfilePage() {
       </div>
 
       {/* ================= 통계 ================= */}
-      <div style={{ marginTop: 20, background: "white", padding: 20, borderRadius: 16 }}>
+      <div style={{ marginTop: 20, background: 'var(--surface)', padding: 20, borderRadius: 'var(--radius-lg)' }}>
         <h3>활동 통계</h3>
         <p>받은 평가: {myReviews.length}건</p>
         <p>평가자 수: {reviewerCount}명</p>
@@ -236,7 +236,7 @@ export default function ProfilePage() {
       </div>
 
       {/* ================= 프로젝트 ================= */}
-      <div style={{ marginTop: 20, background: "white", padding: 20, borderRadius: 16 }}>
+      <div style={{ marginTop: 20, background: 'var(--surface)', padding: 20, borderRadius: 'var(--radius-lg)' }}>
         <h3>참여 프로젝트</h3>
         {myProjects.map((p) => (
           <p key={p.id}>• {p.title}</p>
@@ -244,7 +244,7 @@ export default function ProfilePage() {
       </div>
 
       {/* ================= 타임라인 ================= */}
-      <div style={{ marginTop: 20, background: "white", padding: 20, borderRadius: 16 }}>
+      <div style={{ marginTop: 20, background: 'var(--surface)', padding: 20, borderRadius: 'var(--radius-lg)' }}>
         <h3>활동 타임라인</h3>
         {timeline.slice(0, 8).map((t, i) => (
           <p key={i}>
@@ -262,7 +262,7 @@ export default function ProfilePage() {
           background: "black",
           color: "white",
           border: "none",
-          borderRadius: 8,
+          borderRadius: 'var(--radius-sm)',
           cursor: "pointer",
         }}
       >

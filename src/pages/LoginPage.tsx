@@ -69,7 +69,7 @@ export default function LoginPage() {
         }}
       >
         <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 'auto' }}>
-          collabol
+          collaball
         </div>
         <div style={{ marginBottom: 56 }}>
           <div style={{ fontSize: 36, fontWeight: 700, lineHeight: 1.25, letterSpacing: '-0.8px', marginBottom: 16 }}>
@@ -115,7 +115,7 @@ export default function LoginPage() {
             로그인
           </div>
           <div style={{ fontSize: 14, color: 'var(--text-tertiary)' }}>
-            collabol 계정으로 시작하세요
+            collaball 계정으로 시작하세요
           </div>
         </div>
 

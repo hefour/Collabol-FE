@@ -152,7 +152,7 @@ export default function RegisterPage() {
         }}
       >
         <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 32 }}>
-          collabol
+          collaball
         </div>
         <div style={{ fontSize: 34, fontWeight: 700, lineHeight: 1.3, letterSpacing: '-0.8px', marginBottom: 16 }}>
           협업 프로필을<br />지금 만들어보세요
@@ -182,7 +182,7 @@ export default function RegisterPage() {
             회원가입
           </div>
           <div style={{ fontSize: 14, color: 'var(--text-tertiary)' }}>
-            이메일 인증 후 collabol을 시작하세요
+            이메일 인증 후 collaball을 시작하세요
           </div>
         </div>
 

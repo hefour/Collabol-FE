@@ -22,16 +22,16 @@ export default function ProjectsPage() {
   const getStatusColor = (status: Project["status"]) => {
     switch (status) {
       case "in_progress":
-        return "#16a34a";
+        return "var(--green)";
 
       case "recruiting":
-        return "#f59e0b";
+        return "var(--amber)";
 
       case "completed":
         return "#2563eb";
 
       default:
-        return "#666";
+        return "var(--text-secondary)";
     }
   };
 
@@ -46,7 +46,7 @@ export default function ProjectsPage() {
           key={p.id}
           style={{
             border: "1px solid #ddd",
-            borderRadius: 12,
+            borderRadius: 'var(--radius-md)',
             padding: 20,
             marginBottom: 16,
           }}
@@ -70,7 +70,7 @@ export default function ProjectsPage() {
             </span>
           </div>
 
-          <p style={{ color: "#666", marginTop: 8 }}>
+          <p style={{ color: 'var(--text-secondary)', marginTop: 8 }}>
             {p.description}
           </p>
 
@@ -80,7 +80,7 @@ export default function ProjectsPage() {
               style={{
                 padding: "10px 16px",
                 border: "none",
-                borderRadius: 8,
+                borderRadius: 'var(--radius-sm)',
                 background: "black",
                 color: "white",
                 cursor: "pointer",
@@ -95,8 +95,8 @@ export default function ProjectsPage() {
                 style={{
                   padding: "10px 16px",
                   border: "none",
-                  borderRadius: 8,
-                  background: "#f59e0b",
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'var(--amber)',
                   color: "white",
                   cursor: "pointer",
                 }}
@@ -111,8 +111,8 @@ export default function ProjectsPage() {
                 style={{
                   padding: "10px 16px",
                   border: "none",
-                  borderRadius: 8,
-                  background: "#4CAF50",
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'var(--green)',
                   color: "white",
                   cursor: "pointer",
                 }}
