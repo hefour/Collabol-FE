@@ -125,6 +125,16 @@ export interface ShareProfile {
   recentProjects: Pick<Project, 'id' | 'title' | 'status' | 'tags'>[];
 }
 
+// ─── 활동 피드 ────────────────────────────────────────────────────────────────
+
+export interface Activity {
+  id: string;
+  projectId: string;
+  userId: string;
+  action: string;
+  createdAt: string;
+}
+
 // ─── API 공통 ─────────────────────────────────────────────────────────────────
 
 export interface ApiResponse<T> {

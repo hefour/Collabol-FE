@@ -4,6 +4,7 @@ import type {
   Project,
   Task,
   Review,
+  Activity,
 } from '../types';
 
 // ─── 현재 로그인 사용자 ────────────────────────────────────────────────────────
@@ -224,6 +225,100 @@ export const tasks: Task[] = [
     assigneeId: 'u3',
     dueDate: '2026-04-05',
     createdAt: '2026-03-25T00:00:00Z',
+  },
+  {
+    id: 't6',
+    projectId: 'p1',
+    title: '와이어프레임 설계',
+    status: 'done',
+    priority: 'high',
+    assigneeId: 'u4',
+    dueDate: '2026-04-08',
+    createdAt: '2026-04-01T00:00:00Z',
+  },
+  {
+    id: 't7',
+    projectId: 'p1',
+    title: '프로토타입 작성',
+    status: 'done',
+    priority: 'medium',
+    assigneeId: 'u4',
+    dueDate: '2026-04-15',
+    createdAt: '2026-04-08T00:00:00Z',
+  },
+  {
+    id: 't8',
+    projectId: 'p1',
+    title: '디자인 시스템 수립',
+    status: 'in_progress',
+    priority: 'high',
+    assigneeId: 'u4',
+    dueDate: '2026-05-20',
+    createdAt: '2026-04-15T00:00:00Z',
+  },
+  {
+    id: 't9',
+    projectId: 'p1',
+    title: '사용자 흐름도 작성',
+    status: 'todo',
+    priority: 'medium',
+    assigneeId: 'u4',
+    dueDate: '2026-05-25',
+    createdAt: '2026-04-15T00:00:00Z',
+  },
+  {
+    id: 't10',
+    projectId: 'p1',
+    title: 'DB 스키마 최적화',
+    status: 'in_progress',
+    priority: 'high',
+    assigneeId: 'u3',
+    dueDate: '2026-05-22',
+    createdAt: '2026-04-20T00:00:00Z',
+  },
+  {
+    id: 't11',
+    projectId: 'p1',
+    title: '프로필 페이지 구현',
+    status: 'done',
+    priority: 'high',
+    assigneeId: 'u1',
+    dueDate: '2026-04-16',
+    createdAt: '2026-04-10T00:00:00Z',
+  },
+];
+
+// ─── 활동 피드 ────────────────────────────────────────────────────────────────
+// TODO: 백엔드 연결 시 → GET /api/v1/projects/:id/activities
+
+export const activities: Activity[] = [
+  {
+    id: 'a1',
+    projectId: 'p1',
+    userId: 'u1',
+    action: '프로필 페이지 구현을 완료하였습니다',
+    createdAt: '2026-04-16T16:00:00Z',
+  },
+  {
+    id: 'a2',
+    projectId: 'p1',
+    userId: 'u4',
+    action: '와이어프레임 설계를 완료하였습니다',
+    createdAt: '2026-04-08T11:00:00Z',
+  },
+  {
+    id: 'a3',
+    projectId: 'p1',
+    userId: 'u3',
+    action: 'DB 설계를 완료하였습니다',
+    createdAt: '2026-04-05T14:00:00Z',
+  },
+  {
+    id: 'a4',
+    projectId: 'p1',
+    userId: 'u1',
+    action: 'types/index.ts 작성을 완료하였습니다',
+    createdAt: '2026-04-11T09:00:00Z',
   },
 ];
 
