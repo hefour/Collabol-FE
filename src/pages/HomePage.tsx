@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { currentUser, projects, tasks, reviews } from '../data/mockData';
+import { currentUser, projects, tasks, reviews, activities, allUsers } from '../data/mockData';
 import { Avatar } from '../components/ui/Avatar';
 import { SkillBar } from '../components/ui/SkillBar';
 import { ProjectCard } from '../components/ui/ProjectCard';
@@ -38,12 +38,12 @@ export default function HomePage() {
     .slice(0, 4);
 
   return (
-    <div style={{ padding: '24px 20px', maxWidth: 900 }} className="md-page-padding">
+    <div style={{ padding: '20px 16px' }} className="md-page-padding">
 
       {/* ─── Topbar ─── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
         <div>
-          <div style={{ fontSize: 22, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>
+          <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>
             안녕하세요, {currentUser.name.slice(1)}님 👋
           </div>
           <div style={{ fontSize: 14, color: 'var(--text-tertiary)', marginTop: 3 }}>
@@ -139,7 +139,7 @@ export default function HomePage() {
         </div>
 
         {/* 바디 */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        <div className="profile-body-grid">
           {/* 협업 점수 */}
           <div
             style={{
@@ -207,7 +207,7 @@ export default function HomePage() {
             >
               협업 능력 평가
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div className="skill-grid">
               {currentUser.skillRatings.map(rating => (
                 <SkillBar key={rating.tag} rating={rating} />
               ))}
@@ -233,14 +233,16 @@ export default function HomePage() {
           전체보기 →
         </button>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 32 }}>
+      <div className="card-grid" style={{ marginBottom: 32 }}>
         {myProjects.map(project => (
           <ProjectCard
             key={project.id}
             project={project}
             tasks={tasks.filter(t => t.projectId === project.id)}
+            reviews={reviews.filter(r => r.projectId === project.id)}
+            activities={activities.filter(a => a.projectId === project.id)}
+            allUsers={allUsers}
             currentUserId={currentUser.id}
-            onEvaluate={() => navigate('/review')}
           />
         ))}
       </div>

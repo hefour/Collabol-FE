@@ -135,7 +135,7 @@ function MemberTaskCard({
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 700, fontSize: 14 }}>{name}</div>
-            <div style={{ fontSize: 12, color: "#A0A0A0" }}>
+            <div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
               @{handle} · {role}
             </div>
           </div>
@@ -163,7 +163,7 @@ function MemberTaskCard({
           {visibleTasks.length === 0 ? (
             <div
               style={{
-                fontSize: 13, color: "#A0A0A0", textAlign: "center", padding: "6px 0",
+                fontSize: 13, color: "var(--text-tertiary)", textAlign: "center", padding: "6px 0",
               }}
             >
               해당하는 태스크 없음
@@ -187,7 +187,7 @@ function MemberTaskCard({
                 </span>
                 {task.dueDate && (
                   <span
-                    style={{ fontSize: 11, color: "#A0A0A0", flexShrink: 0 }}
+                    style={{ fontSize: 11, color: "var(--text-tertiary)", flexShrink: 0 }}
                   >
                     {task.dueDate.slice(5).replace("-", ".")}
                   </span>
@@ -217,7 +217,7 @@ export default function ProjectDetailPage() {
   const proj = projects.find((p) => p.id === projectId);
   if (!proj)
     return (
-      <div style={{ padding: 24, color: "#A0A0A0" }}>
+      <div style={{ padding: 24, color: "var(--text-tertiary)" }}>
         존재하지 않는 프로젝트입니다.
       </div>
     );
@@ -276,29 +276,25 @@ export default function ProjectDetailPage() {
     .slice(0, 4);
 
   return (
-    <div
-      style={{
-        padding: "28px 32px", minHeight: "100vh", background: "var(--bg)",
-      }}
-    >
+    <div style={{ padding: '20px 16px' }} className="md-page-padding">
       {/* Breadcrumb */}
       <div
         style={{
           display: "flex", alignItems: "center", gap: 8,
-          fontSize: 13, color: "#A0A0A0", marginBottom: 20,
+          fontSize: 13, color: "var(--text-tertiary)", marginBottom: 20,
         }}
       >
         <button
           onClick={() => navigate("/projects")}
           style={{
             background: "none", border: "none", cursor: "pointer",
-            color: "#A0A0A0", fontSize: 13, padding: 0,
+            color: "var(--text-tertiary)", fontSize: 13, padding: 0,
           }}
         >
           프로젝트
         </button>
         <span>›</span>
-        <span style={{ color: "#1A1A1A", fontWeight: 600 }}>{proj.title}</span>
+        <span style={{ color: "var(--text-primary)", fontWeight: 600 }}>{proj.title}</span>
       </div>
 
       {/* Project banner */}
@@ -504,7 +500,7 @@ export default function ProjectDetailPage() {
           >
             <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
               담당자별 태스크{" "}
-              <span style={{ color: "#A0A0A0", fontWeight: 400 }}>
+              <span style={{ color: "var(--text-tertiary)", fontWeight: 400 }}>
                 ({projectTasks.length})
               </span>
             </h2>
@@ -571,7 +567,7 @@ export default function ProjectDetailPage() {
               <div
                 style={{
                   textAlign: "center", padding: "40px 0",
-                  color: "#A0A0A0", fontSize: 14,
+                  color: "var(--text-tertiary)", fontSize: 14,
                 }}
               >
                 해당하는 태스크가 없습니다
@@ -607,7 +603,7 @@ export default function ProjectDetailPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {upcomingDeadlines.length === 0 ? (
                 <div
-                  style={{ fontSize: 13, color: "#A0A0A0", textAlign: "center" }}
+                  style={{ fontSize: 13, color: "var(--text-tertiary)", textAlign: "center" }}
                 >
                   마감 임박 태스크 없음
                 </div>
@@ -669,7 +665,7 @@ export default function ProjectDetailPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {projectActivities.length === 0 ? (
                 <div
-                  style={{ fontSize: 13, color: "#A0A0A0", textAlign: "center" }}
+                  style={{ fontSize: 13, color: "var(--text-tertiary)", textAlign: "center" }}
                 >
                   활동 내역 없음
                 </div>
@@ -711,7 +707,7 @@ export default function ProjectDetailPage() {
                           {act.action}
                         </div>
                         <div
-                          style={{ fontSize: 11, color: "#A0A0A0", marginTop: 2 }}
+                          style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 2 }}
                         >
                           {act.createdAt.slice(0, 10)}
                         </div>
@@ -767,12 +763,12 @@ function StatCard({
         border: "1px solid rgba(0,0,0,0.08)",
       }}
     >
-      <div style={{ fontSize: 12, color: "#A0A0A0", marginBottom: 6 }}>
+      <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>
         {label}
       </div>
       <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1 }}>
         {value}
-        <span style={{ fontSize: 14, fontWeight: 400, color: "#A0A0A0" }}>
+        <span style={{ fontSize: 14, fontWeight: 400, color: "var(--text-tertiary)" }}>
           {unit}
         </span>
       </div>
