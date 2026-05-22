@@ -332,7 +332,7 @@ export default function SharePage() {
             </svg>
           </div>
           <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>
-            Collabol
+            Collaball
           </span>
           <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 4 }}>
             / 공유된 프로필
@@ -602,7 +602,7 @@ export default function SharePage() {
         {/* ─── 푸터 ─── */}
         <div style={{ textAlign: 'center', marginTop: 32 }}>
           <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8 }}>
-            이 프로필은 <strong style={{ color: 'var(--green)' }}>Collabol</strong>에서 공유되었습니다
+            이 프로필은 <strong style={{ color: 'var(--green)' }}>Collaball</strong>에서 공유되었습니다
           </div>
           <div style={{ fontSize: 11, color: '#C0BFBA' }}>
             대학생 협업 프로필 플랫폼 · 숭실대학교

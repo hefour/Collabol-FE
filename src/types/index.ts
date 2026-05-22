@@ -20,12 +20,16 @@ export interface SkillRating {
 export type Department =
   | '컴퓨터학부'
   | '소프트웨어학부'
+  | 'AI소프트웨어학부'
   | '경영학부'
   | '산업정보시스템학과'
   | '전자정보공학부'
   | '기계공학부'
   | '화학공학과'
   | '건축학부'
+  | '미디어커뮤니케이션학부'
+  | '경제학부'
+  | '영어영문학과'
   | '기타';
 
 export const DEPARTMENTS: Department[] = [
@@ -76,6 +80,7 @@ export interface Project {
   title: string;
   description: string;
   status: ProjectStatus;
+  color?: string;
   members: ProjectMember[];
   ownerId: string;
   tags: string[];          // 기술/주제 태그
@@ -115,6 +120,19 @@ export interface Review {
   createdAt: string;
 }
 
+// ─── 동료 평가 요청 ───────────────────────────────────────────────────────────
+
+export interface ReviewRequest {
+  id: string;
+  projectId: string;
+  revieweeId: string;
+  dueDate: string;
+  status: 'pending' | 'in_progress';
+  progress: number;        // 0–5 (완료한 항목 수)
+  lastSavedAt?: string;
+  strengthTags?: string[]; // 임시 저장된 강점 태그
+}
+
 // ─── 공유 프로필 카드 ─────────────────────────────────────────────────────────
 
 export interface ShareProfile {
@@ -123,6 +141,16 @@ export interface ShareProfile {
   reviewCount: number;
   projectCount: number;
   recentProjects: Pick<Project, 'id' | 'title' | 'status' | 'tags'>[];
+}
+
+// ─── 활동 피드 ────────────────────────────────────────────────────────────────
+
+export interface Activity {
+  id: string;
+  projectId: string;
+  userId: string;
+  action: string;
+  createdAt: string;
 }
 
 // ─── API 공통 ─────────────────────────────────────────────────────────────────

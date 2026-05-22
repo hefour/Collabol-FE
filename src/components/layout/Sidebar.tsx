@@ -74,7 +74,7 @@ export default function Sidebar() {
             letterSpacing: '-0.5px',
           }}
         >
-          collabol
+          collaball
         </span>
       </div>
 
