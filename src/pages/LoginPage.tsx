@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const FEATURES = [
   {
@@ -39,18 +40,28 @@ const FEATURES = [
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email || !password) {
       setError('이메일과 비밀번호를 입력해주세요.');
       return;
     }
-    // TODO: 백엔드 연결 후 실제 인증 처리
-    navigate('/');
+    setLoading(true);
+    setError('');
+    try {
+      await login(email, password);
+      navigate('/home');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '로그인에 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -158,20 +169,21 @@ export default function LoginPage() {
 
           <button
             type="submit"
+            disabled={loading}
             style={{
               marginTop: 8,
               padding: '13px',
               borderRadius: 'var(--radius-sm)',
-              background: 'var(--green)',
+              background: loading ? 'var(--text-tertiary)' : 'var(--green)',
               color: '#fff',
               fontSize: 15,
               fontWeight: 600,
               border: 'none',
-              cursor: 'pointer',
+              cursor: loading ? 'not-allowed' : 'pointer',
               letterSpacing: '-0.2px',
             }}
           >
-            로그인
+            {loading ? '로그인 중...' : '로그인'}
           </button>
         </form>
 

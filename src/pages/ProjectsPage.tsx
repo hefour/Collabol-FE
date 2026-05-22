@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { currentUser, projects, tasks, reviews, activities, allUsers } from '../data/mockData';
+import { useState, useEffect } from 'react';
+import { projectsApi, toProject } from '../api/projects';
+import type { Project } from '../types';
 import { ProjectCard } from '../components/ui/ProjectCard';
 
 type Filter = 'all' | 'in_progress' | 'completed';
@@ -12,53 +13,51 @@ const TAB_LABELS: Record<Filter, string> = {
 
 export default function ProjectsPage() {
   const [filter, setFilter] = useState<Filter>('all');
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  // 내 프로젝트 (currentUser가 멤버인 것만)
-  const myProjects = projects.filter(p =>
-    p.members.some(m => m.userId === currentUser.id),
-  );
-  const inProgressProjects = myProjects.filter(p => p.status === 'in_progress');
-  const completedProjects  = myProjects.filter(p => p.status === 'completed');
+  const [modalOpen, setModalOpen] = useState(false);
+  const [form, setForm] = useState({ name: '', description: '' });
+  const [creating, setCreating] = useState(false);
+  const [formError, setFormError] = useState('');
 
-  // 통계: 평균 진행률 (진행 중 프로젝트)
-  const avgProgress =
-    inProgressProjects.length > 0
-      ? inProgressProjects.reduce((acc, p) => {
-          const pt = tasks.filter(t => t.projectId === p.id);
-          const done = pt.filter(t => t.status === 'done').length;
-          return acc + (pt.length > 0 ? done / pt.length : 0);
-        }, 0) / inProgressProjects.length
-      : 0;
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.name.trim()) { setFormError('프로젝트 이름을 입력해주세요.'); return; }
+    setCreating(true);
+    setFormError('');
+    try {
+      const res = await projectsApi.create(form.name.trim(), form.description.trim());
+      setProjects(prev => [toProject(res), ...prev]);
+      setModalOpen(false);
+      setForm({ name: '', description: '' });
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : '생성에 실패했습니다.');
+    } finally {
+      setCreating(false);
+    }
+  }
 
-  // 통계: 평균 평점
-  const myReviews = reviews.filter(r => r.revieweeId === currentUser.id);
-  const avgRating =
-    myReviews.length > 0
-      ? myReviews.reduce((sum, r) => {
-          const mean = r.skillRatings.reduce((s, sr) => s + sr.score, 0) / r.skillRatings.length;
-          return sum + mean;
-        }, 0) / myReviews.length
-      : 0;
+  useEffect(() => {
+    projectsApi.list()
+      .then(res => setProjects(res.map(toProject)))
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
+  }, []);
 
-  // 통계: 이번 주 활동 (최근 7일 activities)
-  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  const weeklyActivity = activities.filter(
-    a =>
-      myProjects.some(p => p.id === a.projectId) &&
-      new Date(a.createdAt) >= weekAgo,
-  ).length;
+  const inProgressProjects = projects.filter(p => p.status === 'in_progress');
+  const completedProjects  = projects.filter(p => p.status === 'completed');
 
   const filtered =
-    filter === 'all'
-      ? myProjects
-      : filter === 'in_progress'
-      ? inProgressProjects
-      : completedProjects;
+    filter === 'all'         ? projects :
+    filter === 'in_progress' ? inProgressProjects :
+                               completedProjects;
 
   const tabCounts: Record<Filter, number> = {
-    all: myProjects.length,
+    all:         projects.length,
     in_progress: inProgressProjects.length,
-    completed: completedProjects.length,
+    completed:   completedProjects.length,
   };
 
   return (
@@ -73,19 +72,13 @@ export default function ProjectsPage() {
           </p>
         </div>
         <button
+          onClick={() => setModalOpen(true)}
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            background: 'var(--green)',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 'var(--radius-md)',
-            padding: '10px 18px',
-            fontSize: 14,
-            fontWeight: 600,
-            cursor: 'pointer',
-            flexShrink: 0,
+            display: 'flex', alignItems: 'center', gap: 6,
+            background: 'var(--green)', color: '#fff',
+            border: 'none', borderRadius: 'var(--radius-md)',
+            padding: '10px 18px', fontSize: 14, fontWeight: 600,
+            cursor: 'pointer', flexShrink: 0,
           }}
         >
           + 새 프로젝트
@@ -96,35 +89,15 @@ export default function ProjectsPage() {
       <div className="stats-grid">
         <StatCard
           label="전체 프로젝트"
-          value={String(myProjects.length)}
+          value={String(projects.length)}
           sub={`진행 중 ${inProgressProjects.length} · 완료 ${completedProjects.length}`}
         />
-        <StatCard
-          label="평균 진행률"
-          value={`${Math.round(avgProgress * 100)}%`}
-          sub="진행 중 프로젝트 기준"
-        />
-        <StatCard
-          label="평균 평점"
-          value={avgRating > 0 ? avgRating.toFixed(1) : '—'}
-          sub={`/ 5.0 · ${myReviews.length}개 평가`}
-        />
-        <StatCard
-          label="이번 주 활동"
-          value={String(weeklyActivity)}
-          sub="최근 7일 기준"
-        />
+        <StatCard label="진행 중" value={String(inProgressProjects.length)} sub="프로젝트" />
+        <StatCard label="완료" value={String(completedProjects.length)} sub="프로젝트" />
       </div>
 
       {/* ── 탭 필터 ── */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 20,
-        }}
-      >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div style={{ display: 'flex', gap: 4 }}>
           {(['all', 'in_progress', 'completed'] as Filter[]).map(f => {
             const active = filter === f;
@@ -138,43 +111,117 @@ export default function ProjectsPage() {
                   border: active ? '1px solid var(--border2)' : '1px solid transparent',
                   background: active ? 'var(--surface)' : 'transparent',
                   color: active ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                  fontSize: 13,
-                  fontWeight: active ? 600 : 400,
-                  cursor: 'pointer',
-                  transition: 'all 0.12s',
+                  fontSize: 13, fontWeight: active ? 600 : 400,
+                  cursor: 'pointer', transition: 'all 0.12s',
                 }}
               >
                 {TAB_LABELS[f]}&nbsp;
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 500,
-                    color: active ? 'var(--green)' : 'var(--text-tertiary)',
-                  }}
-                >
+                <span style={{ fontSize: 11, fontWeight: 500, color: active ? 'var(--green)' : 'var(--text-tertiary)' }}>
                   {tabCounts[f]}
                 </span>
               </button>
             );
           })}
         </div>
-
         <div style={{ display: 'flex', gap: 8 }}>
           <button style={ghostBtn}>필터</button>
           <button style={ghostBtn}>최근 활동 ↓</button>
         </div>
       </div>
 
-      {/* ── 카드 그리드 ── */}
-      {filtered.length === 0 ? (
+      {/* ── 새 프로젝트 모달 ── */}
+      {modalOpen && (
         <div
+          onClick={() => setModalOpen(false)}
           style={{
-            textAlign: 'center',
-            padding: '60px 0',
-            color: 'var(--text-tertiary)',
-            fontSize: 14,
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 1000,
           }}
         >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'var(--surface)', borderRadius: 'var(--radius-lg)',
+              padding: '28px 32px', width: 440,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+            }}
+          >
+            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 20 }}>새 프로젝트</h2>
+            <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>
+                  프로젝트 이름 <span style={{ color: 'var(--coral)' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                  placeholder="예) Collaball 플랫폼 개발"
+                  maxLength={100}
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>
+                  설명
+                </label>
+                <textarea
+                  value={form.description}
+                  onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+                  placeholder="프로젝트에 대해 간단히 설명해주세요"
+                  maxLength={1000}
+                  rows={3}
+                  style={{ ...inputStyle, resize: 'none', lineHeight: 1.6 }}
+                />
+              </div>
+              {formError && (
+                <div style={{ fontSize: 13, color: 'var(--coral)', padding: '8px 12px', background: 'var(--coral-light)', borderRadius: 'var(--radius-sm)' }}>
+                  {formError}
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                <button
+                  type="submit"
+                  disabled={creating}
+                  style={{
+                    flex: 1, padding: '11px 0',
+                    background: creating ? 'var(--text-tertiary)' : 'var(--green)',
+                    color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)',
+                    fontSize: 14, fontWeight: 600, cursor: creating ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {creating ? '생성 중...' : '프로젝트 만들기'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setModalOpen(false); setFormError(''); setForm({ name: '', description: '' }); }}
+                  style={{
+                    padding: '11px 20px',
+                    background: 'var(--surface2)', color: 'var(--text-secondary)',
+                    border: 'none', borderRadius: 'var(--radius-sm)',
+                    fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  취소
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── 카드 그리드 ── */}
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-tertiary)', fontSize: 14 }}>
+          불러오는 중...
+        </div>
+      ) : error ? (
+        <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--coral)', fontSize: 14 }}>
+          {error}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-tertiary)', fontSize: 14 }}>
           프로젝트가 없습니다.
         </div>
       ) : (
@@ -183,11 +230,11 @@ export default function ProjectsPage() {
             <ProjectCard
               key={p.id}
               project={p}
-              tasks={tasks.filter(t => t.projectId === p.id)}
-              reviews={reviews.filter(r => r.projectId === p.id)}
-              activities={activities.filter(a => a.projectId === p.id)}
-              allUsers={allUsers}
-              currentUserId={currentUser.id}
+              tasks={[]}
+              reviews={[]}
+              activities={[]}
+              allUsers={[]}
+              currentUserId=""
             />
           ))}
         </div>
@@ -196,18 +243,14 @@ export default function ProjectsPage() {
   );
 }
 
-// ── 통계 카드 ──────────────────────────────────────────────────────────────────
-
 function StatCard({ label, value, sub }: { label: string; value: string; sub: string }) {
   return (
-    <div
-      style={{
-        background: 'var(--surface)',
-        border: '0.5px solid var(--border)',
-        borderRadius: 'var(--radius-md)',
-        padding: '16px 20px',
-      }}
-    >
+    <div style={{
+      background: 'var(--surface)',
+      border: '0.5px solid var(--border)',
+      borderRadius: 'var(--radius-md)',
+      padding: '16px 20px',
+    }}>
       <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8 }}>{label}</p>
       <p style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1, marginBottom: 6 }}>
         {value}
@@ -217,13 +260,23 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub: st
   );
 }
 
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '10px 13px',
+  borderRadius: 'var(--radius-sm)',
+  border: '1px solid var(--border2)',
+  background: 'var(--bg)',
+  fontSize: 14,
+  color: 'var(--text-primary)',
+  outline: 'none',
+  fontFamily: 'inherit',
+};
+
 const ghostBtn: React.CSSProperties = {
   padding: '7px 14px',
   borderRadius: 'var(--radius-sm)',
   border: '0.5px solid var(--border2)',
   background: 'var(--surface)',
   color: 'var(--text-secondary)',
-  fontSize: 12,
-  fontWeight: 500,
-  cursor: 'pointer',
+  fontSize: 12, fontWeight: 500, cursor: 'pointer',
 };

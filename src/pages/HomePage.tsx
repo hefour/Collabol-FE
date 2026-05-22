@@ -1,8 +1,12 @@
 import { useNavigate } from 'react-router-dom';
-import { currentUser, projects, tasks, reviews, activities, allUsers } from '../data/mockData';
+import { useState, useEffect } from 'react';
+import { userApi, type UserMeResponse } from '../api/user';
+import { projectsApi, toProject } from '../api/projects';
+import { evaluationsApi, toReview } from '../api/evaluations';
 import { Avatar } from '../components/ui/Avatar';
 import { SkillBar } from '../components/ui/SkillBar';
 import { ProjectCard } from '../components/ui/ProjectCard';
+import type { Project, SkillRating } from '../types';
 
 function CircularProgress({ score }: { score: number }) {
   const r = 22;
@@ -27,15 +31,72 @@ function CircularProgress({ score }: { score: number }) {
 export default function HomePage() {
   const navigate = useNavigate();
 
-  const avgScore =
-    currentUser.skillRatings.reduce((sum, r) => sum + r.score, 0) /
-    currentUser.skillRatings.length;
+  const [profile, setProfile]           = useState<UserMeResponse | null>(null);
+  const [projects, setProjects]         = useState<Project[]>([]);
+  const [skillRatings, setSkillRatings] = useState<SkillRating[]>([]);
+  const [receivedCount, setReceivedCount] = useState(0);
+  const [writtenCount, setWrittenCount]   = useState(0);
+  const [loading, setLoading]           = useState(true);
 
-  const writtenReviewCount = reviews.filter(r => r.reviewerId === currentUser.id).length;
+  useEffect(() => {
+    async function load() {
+      try {
+        const [profileData, projectList] = await Promise.all([
+          userApi.me(),
+          projectsApi.list(),
+        ]);
+        setProfile(profileData);
+        const mapped = projectList.map(toProject);
+        setProjects(mapped);
 
-  const myProjects = projects
-    .filter(p => p.members.some(m => m.userId === currentUser.id))
-    .slice(0, 4);
+        const completedIds = mapped
+          .filter(p => p.status === 'completed')
+          .map(p => Number(p.id));
+
+        if (completedIds.length > 0) {
+          const evalResults = await Promise.all(
+            completedIds.map(id => Promise.all([
+              evaluationsApi.received(id),
+              evaluationsApi.list(id),
+            ]))
+          );
+          const received = evalResults.flatMap(([r]) => r.map(toReview));
+          const written  = evalResults.flatMap(([, w]) => w.map(toReview));
+
+          if (received.length > 0) {
+            const sums: Record<string, number[]> = {};
+            received.forEach(rev => {
+              rev.skillRatings.forEach(sr => {
+                if (!sums[sr.tag]) sums[sr.tag] = [];
+                sums[sr.tag].push(sr.score);
+              });
+            });
+            setSkillRatings(
+              Object.entries(sums).map(([tag, scores]) => ({
+                tag: tag as SkillRating['tag'],
+                score: parseFloat((scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1)),
+              }))
+            );
+          }
+          setReceivedCount(received.length);
+          setWrittenCount(written.length);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
+  const avgScore = skillRatings.length > 0
+    ? skillRatings.reduce((s, r) => s + r.score, 0) / skillRatings.length
+    : 0;
+
+  const inProgressProjects = projects.filter(p => p.status === 'in_progress').slice(0, 4);
+
+  if (loading) return <div style={{ padding: 24, color: 'var(--text-tertiary)' }}>불러오는 중...</div>;
 
   return (
     <div style={{ padding: '20px 16px' }} className="md-page-padding">
@@ -44,53 +105,10 @@ export default function HomePage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
         <div>
           <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>
-            안녕하세요, {currentUser.name.slice(1)}님 👋
+            안녕하세요, {profile?.name ?? ''}님 👋
           </div>
           <div style={{ fontSize: 14, color: 'var(--text-tertiary)', marginTop: 3 }}>
             오늘도 좋은 협업 되세요
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <button
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '8px 16px', borderRadius: 'var(--radius-sm)',
-              fontSize: 13, fontWeight: 500, cursor: 'pointer',
-              border: '0.5px solid var(--border2)',
-              background: 'var(--surface)', color: 'var(--text-secondary)',
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <circle cx="6" cy="6" r="4" /><path d="M10 10l2.5 2.5" />
-            </svg>
-            팀원 찾기
-          </button>
-          <button
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '8px 16px', borderRadius: 'var(--radius-sm)',
-              fontSize: 13, fontWeight: 500, cursor: 'pointer',
-              border: 'none', background: 'var(--green)', color: '#fff',
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M7 2v10M2 7h10" />
-            </svg>
-            새 프로젝트
-          </button>
-          <div
-            style={{
-              width: 36, height: 36, borderRadius: 'var(--radius-sm)',
-              background: 'var(--surface)', border: '0.5px solid var(--border)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', position: 'relative',
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
-              <path d="M8 1.5a4.5 4.5 0 0 0-4.5 4.5v2.5L2 10h12l-1.5-1.5V6A4.5 4.5 0 0 0 8 1.5Z" />
-              <path d="M6.5 12.5a1.5 1.5 0 0 0 3 0" />
-            </svg>
-            <div style={{ position: 'absolute', top: 8, right: 9, width: 6, height: 6, background: 'var(--coral)', borderRadius: '50%' }} />
           </div>
         </div>
       </div>
@@ -107,18 +125,18 @@ export default function HomePage() {
       >
         {/* 헤더 */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 24 }}>
-          <Avatar name={currentUser.name} size={64} colorIndex={0} />
+          <Avatar name={profile?.name ?? '?'} size={64} colorIndex={0} />
           <div>
             <div style={{ fontSize: 20, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4, letterSpacing: '-0.3px' }}>
-              {currentUser.name}
+              {profile?.name ?? ''}
             </div>
             <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-              숭실대학교 · {currentUser.department} · {currentUser.grade}학년
+              숭실대학교 · {profile?.department ?? ''}
             </div>
           </div>
           <div style={{ marginLeft: 'auto' }}>
             <button
-              onClick={() => navigate(`/profile/${currentUser.id}/share`)}
+              onClick={() => navigate(`/profile/${profile?.id}/share`)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 padding: '8px 16px', borderRadius: 'var(--radius-sm)',
@@ -162,7 +180,7 @@ export default function HomePage() {
                 <span style={{ fontSize: 14, color: 'var(--green)', marginLeft: 2 }}>/ 5.0</span>
               </div>
               <div style={{ fontSize: 12, color: 'var(--green)', marginTop: 4 }}>
-                받은 평가 {currentUser.reviewCount}개
+                받은 평가 {receivedCount}개
               </div>
             </div>
             <CircularProgress score={avgScore} />
@@ -178,9 +196,9 @@ export default function HomePage() {
             }}
           >
             {[
-              { num: currentUser.projectCount, label: '참여 프로젝트' },
-              { num: currentUser.reviewCount,  label: '받은 평가' },
-              { num: writtenReviewCount,        label: '작성한 평가' },
+              { num: projects.length, label: '참여 프로젝트' },
+              { num: receivedCount,   label: '받은 평가' },
+              { num: writtenCount,    label: '작성한 평가' },
             ].map((stat, i, arr) => (
               <div
                 key={stat.label}
@@ -207,11 +225,17 @@ export default function HomePage() {
             >
               협업 능력 평가
             </div>
-            <div className="skill-grid">
-              {currentUser.skillRatings.map(rating => (
-                <SkillBar key={rating.tag} rating={rating} />
-              ))}
-            </div>
+            {skillRatings.length > 0 ? (
+              <div className="skill-grid">
+                {skillRatings.map(rating => (
+                  <SkillBar key={rating.tag} rating={rating} />
+                ))}
+              </div>
+            ) : (
+              <div style={{ fontSize: 13, color: 'var(--text-tertiary)', padding: '8px 0' }}>
+                완료된 프로젝트의 동료 평가가 쌓이면 여기에 표시돼요
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -233,19 +257,26 @@ export default function HomePage() {
           전체보기 →
         </button>
       </div>
-      <div className="card-grid" style={{ marginBottom: 32 }}>
-        {myProjects.map(project => (
-          <ProjectCard
-            key={project.id}
-            project={project}
-            tasks={tasks.filter(t => t.projectId === project.id)}
-            reviews={reviews.filter(r => r.projectId === project.id)}
-            activities={activities.filter(a => a.projectId === project.id)}
-            allUsers={allUsers}
-            currentUserId={currentUser.id}
-          />
-        ))}
-      </div>
+
+      {inProgressProjects.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-tertiary)', fontSize: 14 }}>
+          진행 중인 프로젝트가 없어요
+        </div>
+      ) : (
+        <div className="card-grid" style={{ marginBottom: 32 }}>
+          {inProgressProjects.map(project => (
+            <ProjectCard
+              key={project.id}
+              project={project}
+              tasks={[]}
+              reviews={[]}
+              activities={[]}
+              allUsers={[]}
+              currentUserId={String(profile?.id ?? '')}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

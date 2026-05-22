@@ -1,9 +1,24 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { authApi } from '../api/auth';
 
 // ─── 상수 ─────────────────────────────────────────────────────────────────────
 
 const GRADE_OPTIONS = ['1학년', '2학년', '3학년', '4학년 이상'];
+
+const DEPARTMENT_OPTIONS = [
+  '기독교학과','국어국문학과','영어영문학과','독어독문학과','불어불문학과',
+  '중어중문학과','일어일문학과','철학과','사학과','예술창작학부','스포츠학부',
+  '수학과','물리학과','화학과','정보통계보험수리학과','의생명시스템학부',
+  '법학과','국제법무학과','사회복지학부','행정학부','정치외교학과',
+  '정보사회학과','언론홍보학과','평생교육학과','경제학과','글로벌통상학과',
+  '금융경제학과','국제무역학과','경영학부','벤처중소기업학과','회계학과',
+  '금융학부','벤처경영학과','혁신경영학과','복지경영학과','회계세무학과',
+  '화학공학과','산업정보시스템공학과','전기공학부','기계공학부','건축학부',
+  '신소재공학과','컴퓨터학부','전자정보공학부','글로벌미디어학부',
+  '소프트웨어학부','AI융합학부','디지털미디어학과','AI소프트웨어학과',
+  '정보보호학과','차세대반도체학과','자유전공학부',
+];
 const CODE_DURATION = 180; // 3분
 
 // ─── 스타일 헬퍼 ──────────────────────────────────────────────────────────────
@@ -87,31 +102,34 @@ export default function RegisterPage() {
     }, 1000);
   }
 
-  function handleSendCode() {
+  async function handleSendCode() {
     if (!form.email) { setError('이메일을 입력해주세요.'); return; }
-    // TODO: 백엔드 API 호출 — POST /api/v1/auth/email/send
-    setCodeSent(true);
-    setVerified(false);
-    setCode('');
-    setCodeError('');
-    startTimer();
-  }
-
-  function handleVerifyCode() {
-    if (!code) { setCodeError('인증번호를 입력해주세요.'); return; }
-    if (timer === 0) { setCodeError('인증 시간이 만료됐어요. 다시 받아주세요.'); return; }
-    // TODO: 백엔드 API 호출 — POST /api/v1/auth/email/verify
-    // 현재는 mock: 6자리면 통과
-    if (code.length === 6) {
-      setVerified(true);
+    try {
+      await authApi.sendEmail(form.email);
+      setCodeSent(true);
+      setVerified(false);
+      setCode('');
       setCodeError('');
-      if (timerRef.current) clearInterval(timerRef.current);
-    } else {
-      setCodeError('인증번호가 올바르지 않아요.');
+      startTimer();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '인증번호 발송에 실패했습니다.');
     }
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleVerifyCode() {
+    if (!code) { setCodeError('인증번호를 입력해주세요.'); return; }
+    if (timer === 0) { setCodeError('인증 시간이 만료됐어요. 다시 받아주세요.'); return; }
+    try {
+      await authApi.verifyEmail(form.email, code);
+      setVerified(true);
+      setCodeError('');
+      if (timerRef.current) clearInterval(timerRef.current);
+    } catch (err) {
+      setCodeError(err instanceof Error ? err.message : '인증번호가 올바르지 않아요.');
+    }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const { name, email, password, confirmPassword, department, grade } = form;
 
@@ -131,8 +149,12 @@ export default function RegisterPage() {
       setError('비밀번호는 8자 이상이어야 해요.');
       return;
     }
-    // TODO: 백엔드 연결 후 실제 회원가입 처리
-    navigate('/');
+    try {
+      await authApi.signup({ email, password, name, department });
+      navigate('/login');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '회원가입에 실패했습니다.');
+    }
   }
 
   return (
@@ -331,15 +353,16 @@ export default function RegisterPage() {
           {/* 학과 + 학년 */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Field label="학과">
-              <input
-                type="text"
+              <select
                 value={form.department}
                 onChange={e => setField('department', e.target.value)}
-                placeholder="예) 컴퓨터학부"
-                style={inputBase}
-                onFocus={focusBorder}
-                onBlur={blurBorder}
-              />
+                style={{ ...inputBase, cursor: 'pointer' }}
+              >
+                <option value="">선택</option>
+                {DEPARTMENT_OPTIONS.map(d => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
             </Field>
             <Field label="학년">
               <select
