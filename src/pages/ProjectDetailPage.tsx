@@ -62,11 +62,10 @@ const STATUS_BADGE: Record<string, { label: string; bg: string; color: string }>
 };
 
 function MemberTaskCard({
-  name, email, role, color, tasks, filter, projectId, onStatusChange, onAssigneeChange, members,
+  name, email, role, color, tasks, filter, onStatusChange, onAssigneeChange, members,
 }: {
   name: string; email: string; role: string; color: string;
   tasks: Task[]; filter: FilterType;
-  projectId: number;
   onStatusChange: (taskId: string, next: string) => void;
   onAssigneeChange: (task: Task, assigneeId: string) => void;
   members: { userId: number; name: string }[];
@@ -512,7 +511,6 @@ export default function ProjectDetailPage() {
                 color="#9CA3AF"
                 tasks={unassignedTasks}
                 filter={filter}
-                projectId={numId}
                 onStatusChange={handleStatusChange}
                 onAssigneeChange={handleAssigneeChange}
                 members={members}
@@ -527,7 +525,6 @@ export default function ProjectDetailPage() {
                 color={color}
                 tasks={mt}
                 filter={filter}
-                projectId={numId}
                 onStatusChange={handleStatusChange}
                 onAssigneeChange={handleAssigneeChange}
                 members={members}

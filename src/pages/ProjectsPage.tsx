@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { projectsApi, toProject } from '../api/projects';
-import type { Project } from '../types';
+import { tasksApi, toTask } from '../api/tasks';
+import { teamApi, toProjectMember } from '../api/team';
+import { useAuth } from '../contexts/AuthContext';
+import type { Project, Task } from '../types';
 import { ProjectCard } from '../components/ui/ProjectCard';
 
 type Filter = 'all' | 'in_progress' | 'completed';
@@ -12,8 +15,10 @@ const TAB_LABELS: Record<Filter, string> = {
 };
 
 export default function ProjectsPage() {
+  const { user } = useAuth();
   const [filter, setFilter] = useState<Filter>('all');
   const [projects, setProjects] = useState<Project[]>([]);
+  const [tasksMap, setTasksMap] = useState<Record<string, Task[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -30,6 +35,7 @@ export default function ProjectsPage() {
     try {
       const res = await projectsApi.create(form.name.trim(), form.description.trim());
       setProjects(prev => [toProject(res), ...prev]);
+      setTasksMap(prev => ({ ...prev, [String(res.id)]: [] }));
       setModalOpen(false);
       setForm({ name: '', description: '' });
     } catch (err) {
@@ -40,10 +46,39 @@ export default function ProjectsPage() {
   }
 
   useEffect(() => {
-    projectsApi.list()
-      .then(res => setProjects(res.map(toProject)))
-      .catch(err => setError(err.message))
-      .finally(() => setLoading(false));
+    async function load() {
+      try {
+        const projectList = await projectsApi.list();
+        const mapped = projectList.map(toProject);
+
+        const [taskResults, memberResults] = await Promise.all([
+          Promise.all(mapped.map(p =>
+            tasksApi.list(Number(p.id))
+              .then(t => ({ id: p.id, tasks: t.map(toTask) }))
+              .catch(() => ({ id: p.id, tasks: [] as Task[] }))
+          )),
+          Promise.all(mapped.map(p =>
+            teamApi.members(Number(p.id))
+              .then(m => ({ id: p.id, members: m.map(toProjectMember) }))
+              .catch(() => ({ id: p.id, members: [] }))
+          )),
+        ]);
+
+        const tm: Record<string, Task[]> = {};
+        taskResults.forEach(({ id, tasks }) => { tm[id] = tasks; });
+        setTasksMap(tm);
+
+        setProjects(mapped.map(p => ({
+          ...p,
+          members: memberResults.find(r => r.id === p.id)?.members ?? [],
+        })));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : '불러오기 실패');
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
   }, []);
 
   const inProgressProjects = projects.filter(p => p.status === 'in_progress');
@@ -230,11 +265,11 @@ export default function ProjectsPage() {
             <ProjectCard
               key={p.id}
               project={p}
-              tasks={[]}
+              tasks={tasksMap[p.id] ?? []}
               reviews={[]}
               activities={[]}
               allUsers={[]}
-              currentUserId=""
+              currentUserId={user?.id ?? ''}
             />
           ))}
         </div>
