@@ -23,6 +23,7 @@ export default function EvaluatePage() {
   const [revieweeName, setRevieweeName] = useState('');
   const [loading, setLoading]       = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   const [scores, setScores] = useState<Record<ScoreKey, number>>({
     presentationScore: 0, sincerityScore: 0, communicationScore: 0,
@@ -58,7 +59,8 @@ export default function EvaluatePage() {
 
   const statusLabel = (s: string) => {
     if (s === 'in_progress') return '진행 중';
-    if (s === 'completed')   return '완료';
+    if (s === 'completed')            return '평가 대기';
+    if (s === 'evaluation_completed') return '평가 완료';
     return '모집 중';
   };
 
@@ -74,7 +76,7 @@ export default function EvaluatePage() {
         ...scores,
         comment: comment || undefined,
       });
-      navigate("/review");
+      setSubmitted(true);
     } catch (err) {
       alert(err instanceof Error ? err.message : '평가 제출에 실패했습니다.');
     } finally {
@@ -225,6 +227,30 @@ export default function EvaluatePage() {
           취소
         </button>
       </div>
+
+      {/* ── 평가 완료 모달 ── */}
+      {submitted && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 20, padding: '36px 32px 28px', width: 360, boxShadow: '0 12px 40px rgba(0,0,0,0.2)', textAlign: 'center' }}>
+            <div style={{ fontSize: 48, marginBottom: 14 }}>✅</div>
+            <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 8, letterSpacing: '-0.4px' }}>평가가 완료되었습니다!</h2>
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: 28 }}>
+              {revieweeName}님에 대한 동료 평가가<br />성공적으로 제출되었어요.
+            </p>
+            <button
+              onClick={() => navigate('/review')}
+              style={{
+                width: '100%', padding: '13px 0',
+                background: 'var(--green)', color: '#fff',
+                border: 'none', borderRadius: 10,
+                fontSize: 15, fontWeight: 700, cursor: 'pointer',
+              }}
+            >
+              확인
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -91,9 +91,10 @@ function SkillBar({ rating, rank }: { rating: SkillRating; rank: number }) {
 // ─── ProjectRow ───────────────────────────────────────────────────────────────
 
 const STATUS_MAP: Record<Project['status'], { label: string; color: string; bg: string }> = {
-  in_progress: { label: '진행 중', color: 'var(--green-mid)',  bg: 'var(--green-light)' },
-  recruiting:  { label: '모집 중', color: 'var(--blue-dark)',  bg: 'var(--blue-light)'  },
-  completed:   { label: '완료',    color: '#888',              bg: 'var(--surface2)'    },
+  in_progress:          { label: '진행 중',  color: 'var(--green-mid)', bg: 'var(--green-light)' },
+  recruiting:           { label: '모집 중',  color: 'var(--blue-dark)', bg: 'var(--blue-light)'  },
+  completed:            { label: '평가 대기', color: '#888',             bg: 'var(--surface2)'    },
+  evaluation_completed: { label: '평가 완료', color: '#6366F1',          bg: '#EEF2FF'            },
 };
 
 function ProjectRow({ project, role }: { project: Project; role: string }) {
@@ -229,7 +230,7 @@ export default function ProfilePage() {
         setProjects(mapped);
 
         const ids          = mapped.map(p => Number(p.id));
-        const completedIds = mapped.filter(p => p.status === 'completed').map(p => Number(p.id));
+        const completedIds = mapped.filter(p => p.status === 'completed' || p.status === 'evaluation_completed').map(p => Number(p.id));
 
         const [memberResults, taskResults] = await Promise.all([
           Promise.all(ids.map(id =>

@@ -28,7 +28,7 @@ function mapStatus(s: string): ProjectStatus {
     COMPLETED: 'completed',
     RECRUITING: 'recruiting',
     EVALUATION_PENDING: 'completed',
-    EVALUATION_COMPLETED: 'completed',
+    EVALUATION_COMPLETED: 'evaluation_completed',
     in_progress: 'in_progress',
     completed: 'completed',
     recruiting: 'recruiting',

@@ -202,10 +202,15 @@ function MemberTaskCard({
 }
 
 const STATUS_LABEL: Record<string, string> = {
-  in_progress: "진행 중",
-  recruiting:  "모집 중",
-  completed:   "평가 대기",
+  in_progress:          "진행 중",
+  recruiting:           "모집 중",
+  completed:            "평가 대기",
+  evaluation_completed: "평가 완료",
 };
+
+function isDone(status: string) {
+  return status === 'completed' || status === 'evaluation_completed';
+}
 
 export default function ProjectDetailPage() {
   const { project: projectId } = useParams();
@@ -213,6 +218,7 @@ export default function ProjectDetailPage() {
   const [filter, setFilter] = useState<FilterType>("all");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
+  const [inviteCopied, setInviteCopied] = useState(false);
 
   const [project, setProject] = useState<Project | null>(null);
   const [tasks, setTasks]     = useState<Task[]>([]);
@@ -235,6 +241,7 @@ export default function ProjectDetailPage() {
 
   const [completeConfirm, setCompleteConfirm] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [evalPrompt, setEvalPrompt] = useState(false);
 
   async function handleStatusChange(taskId: string, nextStatus: string) {
     try {
@@ -321,6 +328,7 @@ export default function ProjectDetailPage() {
       const res = await projectsApi.complete(numId);
       setProject(toProject(res));
       setCompleteConfirm(false);
+      setEvalPrompt(true);
     } catch (err) {
       alert(err instanceof Error ? err.message : '완료 처리에 실패했습니다.');
     } finally {
@@ -432,8 +440,25 @@ export default function ProjectDetailPage() {
             🔗 공유 / 초대
           </button>
           {inviteOpen && (
-            <div style={{ marginTop: 8, fontSize: 12, color: "rgba(255,255,255,0.9)", background: "rgba(0,0,0,0.2)", padding: "8px 12px", borderRadius: 8, fontFamily: "monospace" }}>
-              초대코드: <b>{inviteCode}</b>
+            <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 10, background: "rgba(0,0,0,0.2)", padding: "10px 14px", borderRadius: 8 }}>
+              <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", flexShrink: 0 }}>초대코드</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: "#fff", fontFamily: "monospace", flex: 1, letterSpacing: 1 }}>{inviteCode}</span>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(inviteCode).then(() => {
+                    setInviteCopied(true);
+                    setTimeout(() => setInviteCopied(false), 2000);
+                  });
+                }}
+                style={{
+                  padding: "5px 12px", borderRadius: 6, border: "none",
+                  background: inviteCopied ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.2)",
+                  color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer",
+                  whiteSpace: "nowrap", flexShrink: 0,
+                }}
+              >
+                {inviteCopied ? "복사됨 ✓" : "복사"}
+              </button>
             </div>
           )}
         </div>
@@ -471,17 +496,19 @@ export default function ProjectDetailPage() {
               <span style={{ color: "var(--text-tertiary)", fontWeight: 400 }}>({tasks.length})</span>
             </h2>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <button
-              onClick={() => setTaskModal(true)}
-              style={{
-                display: "flex", alignItems: "center", gap: 4,
-                padding: "6px 14px", borderRadius: 8, fontSize: 13,
-                fontWeight: 600, cursor: "pointer",
-                border: "none", background: "#1D9E75", color: "white",
-              }}
-            >
-              + 태스크 추가
-            </button>
+            {!isDone(project.status) && (
+              <button
+                onClick={() => setTaskModal(true)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 4,
+                  padding: "6px 14px", borderRadius: 8, fontSize: 13,
+                  fontWeight: 600, cursor: "pointer",
+                  border: "none", background: "#1D9E75", color: "white",
+                }}
+              >
+                + 태스크 추가
+              </button>
+            )}
             <div style={{ display: "flex", background: "white", borderRadius: 8, border: "1px solid rgba(0,0,0,0.08)", overflow: "hidden" }}>
               {FILTERS.map(f => (
                 <button
@@ -572,7 +599,7 @@ export default function ProjectDetailPage() {
 
           {/* 프로젝트 관리 */}
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {project.status !== 'completed' && (
+            {!isDone(project.status) && (
               <button
                 onClick={() => setCompleteConfirm(true)}
                 style={{ width: "100%", padding: "9px 0", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none", background: "#1D9E75", color: "white" }}
@@ -580,17 +607,17 @@ export default function ProjectDetailPage() {
                 프로젝트 완료
               </button>
             )}
-            {project.status === 'completed' && (
+            {isDone(project.status) && (
               <div style={{ textAlign: "center", padding: "8px 0", fontSize: 13, fontWeight: 600, color: "#1D9E75", background: "#E1F5EE", borderRadius: 8 }}>
-                완료된 프로젝트
+                {project.status === 'evaluation_completed' ? '평가 완료' : '평가 대기'}
               </div>
             )}
             <div style={{ display: "flex", gap: 8 }}>
               <button
-                onClick={project.status !== 'completed' ? openEditModal : undefined}
-                disabled={project.status === 'completed'}
-                title={project.status === 'completed' ? '완료된 프로젝트는 수정할 수 없습니다' : undefined}
-                style={{ flex: 1, padding: "9px 0", borderRadius: 8, fontSize: 13, fontWeight: 600, border: "1px solid rgba(0,0,0,0.1)", background: project.status === 'completed' ? "#F0EFE9" : "white", color: project.status === 'completed' ? "#BDBDBD" : "#1A1A1A", cursor: project.status === 'completed' ? "not-allowed" : "pointer" }}
+                onClick={!isDone(project.status) ? openEditModal : undefined}
+                disabled={isDone(project.status)}
+                title={isDone(project.status) ? '완료된 프로젝트는 수정할 수 없습니다' : undefined}
+                style={{ flex: 1, padding: "9px 0", borderRadius: 8, fontSize: 13, fontWeight: 600, border: "1px solid rgba(0,0,0,0.1)", background: isDone(project.status) ? "#F0EFE9" : "white", color: isDone(project.status) ? "#BDBDBD" : "#1A1A1A", cursor: isDone(project.status) ? "not-allowed" : "pointer" }}
               >
                 수정
               </button>
@@ -779,6 +806,46 @@ export default function ProjectDetailPage() {
                 style={{ padding: "11px 20px", background: "#F0EFE9", color: "#555", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
               >
                 취소
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 완료 후 동료 평가 안내 ── */}
+      {evalPrompt && (
+        <div
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
+        >
+          <div style={{ background: "white", borderRadius: 20, padding: "32px 32px 28px", width: 400, boxShadow: "0 12px 40px rgba(0,0,0,0.2)", textAlign: "center" }}>
+            <div style={{ fontSize: 44, marginBottom: 12 }}>🎉</div>
+            <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 8, letterSpacing: "-0.4px" }}>프로젝트가 완료됐어요!</h2>
+            <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.7, marginBottom: 24 }}>
+              함께한 팀원들에게 동료 평가를 남겨보세요.<br />
+              솔직한 피드백이 서로의 성장에 도움이 돼요.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <button
+                onClick={() => { setEvalPrompt(false); navigate("/review"); }}
+                style={{
+                  width: "100%", padding: "13px 0",
+                  background: "#1D9E75", color: "white",
+                  border: "none", borderRadius: 10,
+                  fontSize: 15, fontWeight: 700, cursor: "pointer",
+                }}
+              >
+                동료 평가 하러 가기 →
+              </button>
+              <button
+                onClick={() => setEvalPrompt(false)}
+                style={{
+                  width: "100%", padding: "11px 0",
+                  background: "#F0EFE9", color: "var(--text-secondary)",
+                  border: "none", borderRadius: 10,
+                  fontSize: 14, fontWeight: 600, cursor: "pointer",
+                }}
+              >
+                나중에 할게요
               </button>
             </div>
           </div>

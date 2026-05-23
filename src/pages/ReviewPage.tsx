@@ -78,7 +78,7 @@ export default function ReviewPage() {
         const mapped = projectList.map(toProject);
         setProjects(mapped);
 
-        const completedProjects = mapped.filter(p => p.status === "completed");
+        const completedProjects = mapped.filter(p => p.status === "completed" || p.status === "evaluation_completed");
         if (completedProjects.length === 0) return;
 
         const projectData = await Promise.all(

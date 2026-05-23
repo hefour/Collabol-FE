@@ -80,7 +80,7 @@ function IconStar() {
 
 export function ProjectCard({ project, tasks, reviews, activities, allUsers, currentUserId }: ProjectCardProps) {
   const navigate = useNavigate();
-  const isCompleted = project.status === 'completed';
+  const isCompleted = project.status === 'completed' || project.status === 'evaluation_completed';
 
   // 진행률
   const done = tasks.filter(t => t.status === 'done').length;

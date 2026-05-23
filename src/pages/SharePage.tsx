@@ -89,9 +89,10 @@ function ShareSkillBar({ rating, rank }: { rating: SkillRating; rank?: number })
 // ─── ProjectRow ───────────────────────────────────────────────────────────────
 
 const STATUS_MAP: Record<Project['status'], { label: string; color: string; bg: string }> = {
-  in_progress: { label: '진행 중', color: 'var(--green-mid)', bg: 'var(--green-light)' },
-  recruiting:  { label: '모집 중', color: 'var(--blue-dark)', bg: 'var(--blue-light)'  },
-  completed:   { label: '완료',    color: '#555',             bg: 'var(--surface2)'    },
+  in_progress:          { label: '진행 중',  color: 'var(--green-mid)', bg: 'var(--green-light)' },
+  recruiting:           { label: '모집 중',  color: 'var(--blue-dark)', bg: 'var(--blue-light)'  },
+  completed:            { label: '평가 대기', color: '#555',             bg: 'var(--surface2)'    },
+  evaluation_completed: { label: '평가 완료', color: '#6366F1',          bg: '#EEF2FF'            },
 };
 
 function ProjectRow({ project }: { project: Project }) {
@@ -189,7 +190,7 @@ export default function SharePage() {
         const mapped = projectList.map(toProject);
         setProjects(mapped);
 
-        const completedIds = mapped.filter(p => p.status === 'completed').map(p => Number(p.id));
+        const completedIds = mapped.filter(p => p.status === 'completed' || p.status === 'evaluation_completed').map(p => Number(p.id));
         if (completedIds.length > 0) {
           const evalResults = await Promise.all(
             completedIds.map(id => evaluationsApi.received(id).catch(() => [] as EvaluationResponse[]))

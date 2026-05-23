@@ -48,6 +48,7 @@ export default function Sidebar() {
   const { logout } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<UserMeResponse | null>(null);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   useEffect(() => {
     userApi.me().then(setProfile).catch(() => {});
@@ -131,7 +132,7 @@ export default function Sidebar() {
           </div>
         </div>
         <button
-          onClick={handleLogout}
+          onClick={() => setShowLogoutModal(true)}
           style={{
             width: '100%', padding: '8px 12px',
             display: 'flex', alignItems: 'center', gap: 8,
@@ -151,6 +152,59 @@ export default function Sidebar() {
           로그아웃
         </button>
       </div>
+
+      {/* 로그아웃 확인 모달 */}
+      {showLogoutModal && (
+        <div
+          onClick={() => setShowLogoutModal(false)}
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(0,0,0,0.35)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 1000,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'var(--surface)',
+              borderRadius: 'var(--radius-lg)',
+              padding: '28px 28px 24px',
+              width: 320,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+            }}
+          >
+            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>로그아웃</div>
+            <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 24, lineHeight: 1.6 }}>
+              정말 로그아웃 하시겠어요?
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={handleLogout}
+                style={{
+                  flex: 1, padding: '10px 0',
+                  background: 'var(--green)', color: '#fff',
+                  border: 'none', borderRadius: 'var(--radius-sm)',
+                  fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                로그아웃
+              </button>
+              <button
+                onClick={() => setShowLogoutModal(false)}
+                style={{
+                  flex: 1, padding: '10px 0',
+                  background: 'var(--surface2)', color: 'var(--text-secondary)',
+                  border: 'none', borderRadius: 'var(--radius-sm)',
+                  fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                취소
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }

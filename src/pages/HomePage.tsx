@@ -52,7 +52,7 @@ export default function HomePage() {
         const mapped = projectList.map(toProject);
 
         const ids          = mapped.map(p => Number(p.id));
-        const completedIds = mapped.filter(p => p.status === 'completed').map(p => Number(p.id));
+        const completedIds = mapped.filter(p => p.status === 'completed' || p.status === 'evaluation_completed').map(p => Number(p.id));
 
         const [taskResults, memberResults] = await Promise.all([
           Promise.all(ids.map(id =>
