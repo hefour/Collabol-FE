@@ -4,7 +4,7 @@ interface BackendResponse<T> {
   data: T;
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function request<T>(path: string, options: RequestInit = {}, retry = true): Promise<T> {
   const token = localStorage.getItem('accessToken');
   const res = await fetch(`/api${path}`, {
     ...options,
@@ -15,7 +15,27 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     },
   });
 
-  if (res.status === 401) {
+  if (res.status === 401 && !path.startsWith('/auth/')) {
+    if (retry) {
+      const refreshToken = localStorage.getItem('refreshToken');
+      if (refreshToken) {
+        try {
+          const refreshRes = await fetch('/api/auth/refresh', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refreshToken }),
+          });
+          if (refreshRes.ok) {
+            const refreshJson: BackendResponse<{ accessToken: string; refreshToken: string }> = await refreshRes.json();
+            localStorage.setItem('accessToken', refreshJson.data.accessToken);
+            localStorage.setItem('refreshToken', refreshJson.data.refreshToken);
+            return request<T>(path, options, false);
+          }
+        } catch {
+          // refresh 실패 시 아래 로그아웃 처리로 이어짐
+        }
+      }
+    }
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     window.location.href = '/login';

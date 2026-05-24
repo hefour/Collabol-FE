@@ -1,5 +1,7 @@
-import { NavLink } from 'react-router-dom';
-import { currentUser } from '../../data/mockData';
+import { useState, useEffect } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+import { userApi, type UserMeResponse } from '../../api/user';
 
 interface NavItem {
   to: string;
@@ -42,12 +44,21 @@ const navItems: NavItem[] = [
   { to: '/review',   label: '동료 평가', icon: <ReviewIcon /> },
 ];
 
-// 아바타 이니셜 생성
-function getInitials(name: string) {
-  return name.slice(0, 1);
-}
-
 export default function Sidebar() {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+  const [profile, setProfile] = useState<UserMeResponse | null>(null);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  useEffect(() => {
+    userApi.me().then(setProfile).catch(() => {});
+  }, []);
+
+  function handleLogout() {
+    logout();
+    navigate('/login');
+  }
+
   return (
     <aside
       className="sidebar-nav"
@@ -62,18 +73,13 @@ export default function Sidebar() {
         left: 0,
         bottom: 0,
         zIndex: 40,
+        display: 'flex',
+        flexDirection: 'column',
       }}
     >
       {/* 로고 */}
       <div style={{ marginBottom: 32, paddingLeft: 8 }}>
-        <span
-          style={{
-            fontSize: 22,
-            fontWeight: 800,
-            color: 'var(--green)',
-            letterSpacing: '-0.5px',
-          }}
-        >
+        <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--green)', letterSpacing: '-0.5px' }}>
           collaball
         </span>
       </div>
@@ -105,51 +111,100 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* 사용자 정보 */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          padding: '12px 8px',
-          borderTop: '1px solid var(--border)',
-          marginTop: 8,
-        }}
-      >
-        <div
+      {/* 사용자 정보 + 로그아웃 */}
+      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 8px', marginBottom: 8 }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+            background: 'var(--green-light)', color: 'var(--green-dark)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontWeight: 700, fontSize: 15,
+          }}>
+            {profile?.name?.[0] ?? '?'}
+          </div>
+          <div style={{ overflow: 'hidden', flex: 1 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {profile?.name ?? ''}
+            </p>
+            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {profile?.department ?? ''}
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => setShowLogoutModal(true)}
           style={{
-            width: 36,
-            height: 36,
-            borderRadius: '50%',
-            background: 'var(--green-light)',
-            color: 'var(--green-dark)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: 700,
-            fontSize: 15,
-            flexShrink: 0,
+            width: '100%', padding: '8px 12px',
+            display: 'flex', alignItems: 'center', gap: 8,
+            borderRadius: 'var(--radius-md)', border: 'none',
+            background: 'transparent', cursor: 'pointer',
+            fontSize: 13, color: 'var(--text-tertiary)',
+            transition: 'background 0.15s',
+          }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+          로그아웃
+        </button>
+      </div>
+
+      {/* 로그아웃 확인 모달 */}
+      {showLogoutModal && (
+        <div
+          onClick={() => setShowLogoutModal(false)}
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(0,0,0,0.35)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 1000,
           }}
         >
-          {currentUser.avatarUrl ? (
-            <img
-              src={currentUser.avatarUrl}
-              alt={currentUser.name}
-              style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
-            />
-          ) : (
-            getInitials(currentUser.name)
-          )}
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'var(--surface)',
+              borderRadius: 'var(--radius-lg)',
+              padding: '28px 28px 24px',
+              width: 320,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+            }}
+          >
+            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>로그아웃</div>
+            <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 24, lineHeight: 1.6 }}>
+              정말 로그아웃 하시겠어요?
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={handleLogout}
+                style={{
+                  flex: 1, padding: '10px 0',
+                  background: 'var(--green)', color: '#fff',
+                  border: 'none', borderRadius: 'var(--radius-sm)',
+                  fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                로그아웃
+              </button>
+              <button
+                onClick={() => setShowLogoutModal(false)}
+                style={{
+                  flex: 1, padding: '10px 0',
+                  background: 'var(--surface2)', color: 'var(--text-secondary)',
+                  border: 'none', borderRadius: 'var(--radius-sm)',
+                  fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                취소
+              </button>
+            </div>
+          </div>
         </div>
-        <div style={{ overflow: 'hidden' }}>
-          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {currentUser.name}
-          </p>
-          <p style={{ fontSize: 11, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {currentUser.department} {currentUser.grade}학년
-          </p>
-        </div>
-      </div>
+      )}
     </aside>
   );
 }

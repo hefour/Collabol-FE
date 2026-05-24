@@ -66,7 +66,7 @@ export interface MyProfile extends User {
 
 // ─── 프로젝트 ─────────────────────────────────────────────────────────────────
 
-export type ProjectStatus = 'recruiting' | 'in_progress' | 'completed';
+export type ProjectStatus = 'recruiting' | 'in_progress' | 'completed' | 'evaluation_completed';
 
 export interface ProjectMember {
   userId: string;

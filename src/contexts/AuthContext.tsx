@@ -11,7 +11,7 @@ interface AuthContextValue {
   user: AuthUser | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 function decodeJwt(token: string): Record<string, string> {
@@ -61,7 +61,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(decoded ?? { id: email, email, name: email });
   }
 
-  function logout() {
+  async function logout() {
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (refreshToken) {
+      authApi.logout(refreshToken).catch(() => {});
+    }
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     setUser(null);

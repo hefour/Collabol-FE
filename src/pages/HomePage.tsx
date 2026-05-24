@@ -3,10 +3,12 @@ import { useState, useEffect } from 'react';
 import { userApi, type UserMeResponse } from '../api/user';
 import { projectsApi, toProject } from '../api/projects';
 import { evaluationsApi, toReview } from '../api/evaluations';
+import { tasksApi, toTask } from '../api/tasks';
+import { teamApi, toProjectMember } from '../api/team';
 import { Avatar } from '../components/ui/Avatar';
 import { SkillBar } from '../components/ui/SkillBar';
 import { ProjectCard } from '../components/ui/ProjectCard';
-import type { Project, SkillRating } from '../types';
+import type { Project, Task, SkillRating } from '../types';
 
 function CircularProgress({ score }: { score: number }) {
   const r = 22;
@@ -33,6 +35,7 @@ export default function HomePage() {
 
   const [profile, setProfile]           = useState<UserMeResponse | null>(null);
   const [projects, setProjects]         = useState<Project[]>([]);
+  const [tasksMap, setTasksMap]         = useState<Record<string, Task[]>>({});
   const [skillRatings, setSkillRatings] = useState<SkillRating[]>([]);
   const [receivedCount, setReceivedCount] = useState(0);
   const [writtenCount, setWrittenCount]   = useState(0);
@@ -47,11 +50,31 @@ export default function HomePage() {
         ]);
         setProfile(profileData);
         const mapped = projectList.map(toProject);
-        setProjects(mapped);
 
-        const completedIds = mapped
-          .filter(p => p.status === 'completed')
-          .map(p => Number(p.id));
+        const ids          = mapped.map(p => Number(p.id));
+        const completedIds = mapped.filter(p => p.status === 'completed' || p.status === 'evaluation_completed').map(p => Number(p.id));
+
+        const [taskResults, memberResults] = await Promise.all([
+          Promise.all(ids.map(id =>
+            tasksApi.list(id)
+              .then(t => ({ id: String(id), tasks: t.map(toTask) }))
+              .catch(() => ({ id: String(id), tasks: [] as Task[] }))
+          )),
+          Promise.all(ids.map(id =>
+            teamApi.members(id)
+              .then(m => ({ id: String(id), members: m.map(toProjectMember) }))
+              .catch(() => ({ id: String(id), members: [] }))
+          )),
+        ]);
+
+        const tm: Record<string, Task[]> = {};
+        taskResults.forEach(({ id, tasks }) => { tm[id] = tasks; });
+        setTasksMap(tm);
+
+        setProjects(mapped.map(p => ({
+          ...p,
+          members: memberResults.find(r => r.id === p.id)?.members ?? [],
+        })));
 
         if (completedIds.length > 0) {
           const evalResults = await Promise.all(
@@ -268,7 +291,7 @@ export default function HomePage() {
             <ProjectCard
               key={project.id}
               project={project}
-              tasks={[]}
+              tasks={tasksMap[project.id] ?? []}
               reviews={[]}
               activities={[]}
               allUsers={[]}

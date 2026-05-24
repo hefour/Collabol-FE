@@ -1,6 +1,10 @@
-import { useMemo, useState } from 'react';
-import { currentUser, projects, reviews, tasks, users } from '../data/mockData';
-import type { Project, Review, SkillRating } from '../types';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { userApi, type UserMeResponse } from '../api/user';
+import { projectsApi, toProject } from '../api/projects';
+import { evaluationsApi, type EvaluationResponse } from '../api/evaluations';
+import { teamApi, type TeamMemberResponse } from '../api/team';
+import { tasksApi, toTask } from '../api/tasks';
+import type { Project, SkillRating } from '../types';
 
 // ─── CircularScore ────────────────────────────────────────────────────────────
 
@@ -87,14 +91,14 @@ function SkillBar({ rating, rank }: { rating: SkillRating; rank: number }) {
 // ─── ProjectRow ───────────────────────────────────────────────────────────────
 
 const STATUS_MAP: Record<Project['status'], { label: string; color: string; bg: string }> = {
-  in_progress: { label: '진행 중', color: 'var(--green-mid)',  bg: 'var(--green-light)' },
-  recruiting:  { label: '모집 중', color: 'var(--blue-dark)',  bg: 'var(--blue-light)'  },
-  completed:   { label: '완료',    color: '#888',              bg: 'var(--surface2)'    },
+  in_progress:          { label: '진행 중',  color: 'var(--green-mid)', bg: 'var(--green-light)' },
+  recruiting:           { label: '모집 중',  color: 'var(--blue-dark)', bg: 'var(--blue-light)'  },
+  completed:            { label: '평가 대기', color: '#888',             bg: 'var(--surface2)'    },
+  evaluation_completed: { label: '평가 완료', color: '#6366F1',          bg: '#EEF2FF'            },
 };
 
-function ProjectRow({ project }: { project: Project }) {
+function ProjectRow({ project, role }: { project: Project; role: string }) {
   const s = STATUS_MAP[project.status];
-  const role = project.members.find(m => m.userId === currentUser.id)?.role ?? '참여';
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 14,
@@ -106,7 +110,7 @@ function ProjectRow({ project }: { project: Project }) {
       <div style={{
         width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
         background: project.status === 'in_progress' ? 'var(--green)'
-                  : project.status === 'recruiting' ? 'var(--blue-dark)' : '#CCC',
+                  : project.status === 'recruiting'  ? 'var(--blue-dark)' : '#CCC',
       }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -132,12 +136,12 @@ function ProjectRow({ project }: { project: Project }) {
 
 // ─── ReviewCard ───────────────────────────────────────────────────────────────
 
-function ReviewCard({ review }: { review: Review }) {
-  const project = projects.find(p => p.id === review.projectId);
-  const reviewer = users.find(u => u.id === review.reviewerId);
-  const avg = review.skillRatings.reduce((s, r) => s + r.score, 0) / review.skillRatings.length;
-  const date = new Date(review.createdAt).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' });
-  const reviewerName = review.isAnonymous ? '익명' : (reviewer?.name ?? '알 수 없음');
+function ReviewCard({ ev, projectTitle }: { ev: EvaluationResponse; projectTitle: string }) {
+  const skillLabels: SkillRating['tag'][] = ['발표력', '커뮤니케이션', '협업태도', '성실성', '기획력'];
+  const scores = [ev.presentationScore, ev.communicationScore, ev.collaborationScore, ev.sincerityScore, ev.planningScore];
+  const skillRatings: SkillRating[] = skillLabels.map((tag, i) => ({ tag, score: scores[i] }));
+  const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+  const date = new Date(ev.createdAt).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' });
 
   return (
     <div style={{
@@ -146,29 +150,23 @@ function ReviewCard({ review }: { review: Review }) {
       borderRadius: 'var(--radius-md)',
       padding: '16px 18px',
     }}>
-      {/* 헤더 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
             <div style={{
               width: 28, height: 28, borderRadius: '50%',
-              background: review.isAnonymous ? 'var(--surface)' : 'var(--green-light)',
+              background: 'var(--green-light)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 12, fontWeight: 600,
-              color: review.isAnonymous ? 'var(--text-tertiary)' : 'var(--green-mid)',
+              color: 'var(--green-mid)',
               border: '0.5px solid var(--border)',
             }}>
-              {review.isAnonymous ? '?' : reviewerName[0]}
+              {ev.reviewer.name[0]}
             </div>
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{reviewerName}</span>
-            {review.isAnonymous && (
-              <span style={{ fontSize: 10, color: 'var(--text-tertiary)', background: 'var(--surface)', borderRadius: 4, padding: '1px 6px' }}>
-                익명
-              </span>
-            )}
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{ev.reviewer.name}</span>
           </div>
           <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-            {project?.title ?? '프로젝트'} · {date}
+            {projectTitle} · {date}
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -177,9 +175,8 @@ function ReviewCard({ review }: { review: Review }) {
         </div>
       </div>
 
-      {/* 스킬 미니 바 */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 16px', marginBottom: review.comment ? 12 : 0 }}>
-        {review.skillRatings.map(r => (
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 16px', marginBottom: ev.comment ? 12 : 0 }}>
+        {skillRatings.map(r => (
           <div key={r.tag} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontSize: 11, color: 'var(--text-tertiary)', width: 60, flexShrink: 0 }}>{r.tag}</span>
             <div style={{ flex: 1, height: 3, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
@@ -190,12 +187,12 @@ function ReviewCard({ review }: { review: Review }) {
         ))}
       </div>
 
-      {review.comment && (
+      {ev.comment && (
         <div style={{
           fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6,
           background: 'var(--surface)', borderRadius: 'var(--radius-sm)', padding: '10px 12px',
         }}>
-          "{review.comment}"
+          "{ev.comment}"
         </div>
       )}
     </div>
@@ -205,28 +202,132 @@ function ReviewCard({ review }: { review: Review }) {
 // ─── ProfilePage ──────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
-  const [bio, setBio] = useState(currentUser.bio);
-  const [tempBio, setTempBio] = useState(currentUser.bio);
+  const [profile, setProfile]             = useState<UserMeResponse | null>(null);
+  const [projects, setProjects]           = useState<Project[]>([]);
+  const [projectRoles, setProjectRoles]   = useState<Record<string, string>>({});
+  const [receivedEvals, setReceivedEvals] = useState<EvaluationResponse[]>([]);
+  const [skillRatings, setSkillRatings]   = useState<SkillRating[]>([]);
+  const [taskRate, setTaskRate]           = useState(0);
+  const [loading, setLoading]             = useState(true);
+
+  const [bio, setBio]               = useState('');
+  const [tempBio, setTempBio]       = useState('');
   const [editingBio, setEditingBio] = useState(false);
+  const [bioSaving, setBioSaving]   = useState(false);
   const [showAllReviews, setShowAllReviews] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied]         = useState(false);
 
-  const myProjects = useMemo(() => projects.filter(p => p.members.some(m => m.userId === currentUser.id)), []);
-  const myReviews  = useMemo(() => reviews.filter(r => r.revieweeId === currentUser.id), []);
-  const myTasks    = useMemo(() => tasks.filter(t => t.assigneeId === currentUser.id), []);
+  useEffect(() => {
+    async function load() {
+      try {
+        const [profileData, projectList] = await Promise.all([
+          userApi.me(),
+          projectsApi.list(),
+        ]);
+        setProfile(profileData);
+        setBio(profileData.bio ?? '');
+        const mapped = projectList.map(toProject);
+        setProjects(mapped);
 
-  const avgScore = currentUser.skillRatings.reduce((s, r) => s + r.score, 0) / currentUser.skillRatings.length;
-  const sortedSkills = [...currentUser.skillRatings].sort((a, b) => b.score - a.score);
+        const ids          = mapped.map(p => Number(p.id));
+        const completedIds = mapped.filter(p => p.status === 'completed' || p.status === 'evaluation_completed').map(p => Number(p.id));
 
-  const taskRate = useMemo(() => {
-    if (!myTasks.length) return 0;
-    return Math.round(myTasks.filter(t => t.status === 'done').length / myTasks.length * 100);
-  }, [myTasks]);
+        const [memberResults, taskResults] = await Promise.all([
+          Promise.all(ids.map(id =>
+            teamApi.members(id)
+              .then(m => ({ id: String(id), m }))
+              .catch(() => ({ id: String(id), m: [] as TeamMemberResponse[] }))
+          )),
+          Promise.all(ids.map(id =>
+            tasksApi.list(id)
+              .then(t => ({ id: String(id), t }))
+              .catch(() => ({ id: String(id), t: [] }))
+          )),
+        ]);
 
-  const displayedReviews = showAllReviews ? myReviews : myReviews.slice(0, 3);
+        const roles: Record<string, string> = {};
+        memberResults.forEach(({ id, m }) => {
+          const me = (m as TeamMemberResponse[]).find(member => member.userId === profileData.id);
+          roles[id] = me ? (me.role === 'LEADER' ? '리더' : '멤버') : '멤버';
+        });
+        setProjectRoles(roles);
+
+        const myTasks = taskResults
+          .flatMap(({ t }) => t.map(toTask))
+          .filter(task => task.assigneeId === String(profileData.id));
+        if (myTasks.length > 0) {
+          setTaskRate(Math.round(myTasks.filter(t => t.status === 'done').length / myTasks.length * 100));
+        }
+
+        if (completedIds.length > 0) {
+          const evalResults = await Promise.all(
+            completedIds.map(id =>
+              evaluationsApi.received(id).catch(() => [] as EvaluationResponse[])
+            )
+          );
+          const allEvals = evalResults.flat();
+          setReceivedEvals(allEvals);
+
+          if (allEvals.length > 0) {
+            const sums: Record<string, number[]> = {};
+            allEvals.forEach(ev => {
+              const scoreMap: Record<string, number> = {
+                '발표력':      ev.presentationScore,
+                '커뮤니케이션': ev.communicationScore,
+                '협업태도':    ev.collaborationScore,
+                '성실성':      ev.sincerityScore,
+                '기획력':      ev.planningScore,
+              };
+              Object.entries(scoreMap).forEach(([tag, score]) => {
+                if (!sums[tag]) sums[tag] = [];
+                sums[tag].push(score);
+              });
+            });
+            setSkillRatings(
+              Object.entries(sums).map(([tag, scores]) => ({
+                tag: tag as SkillRating['tag'],
+                score: parseFloat((scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1)),
+              }))
+            );
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
+  const avgScore    = skillRatings.length > 0
+    ? skillRatings.reduce((s, r) => s + r.score, 0) / skillRatings.length
+    : 0;
+  const sortedSkills   = [...skillRatings].sort((a, b) => b.score - a.score);
+  const displayedEvals = showAllReviews ? receivedEvals : receivedEvals.slice(0, 3);
+
+  const projectTitleById = useMemo(() => {
+    const m: Record<string, string> = {};
+    projects.forEach(p => { m[p.id] = p.title; });
+    return m;
+  }, [projects]);
+
+  const handleSaveBio = useCallback(async () => {
+    setBioSaving(true);
+    try {
+      const res = await userApi.updateMe(tempBio);
+      setBio(res.bio ?? tempBio);
+      setEditingBio(false);
+    } catch {
+      // 실패해도 UI는 닫지 않음
+    } finally {
+      setBioSaving(false);
+    }
+  }, [tempBio]);
 
   const handleCopyLink = () => {
-    const url = `${window.location.origin}/profile/${currentUser.id}/share`;
+    if (!profile) return;
+    const url = `${window.location.origin}/profile/${profile.id}/share`;
     navigator.clipboard.writeText(url).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -234,11 +335,13 @@ export default function ProfilePage() {
   };
 
   const stats = [
-    { label: '협업 점수', value: avgScore.toFixed(1), highlight: true },
-    { label: '받은 평가', value: `${myReviews.length}건` },
-    { label: '프로젝트', value: `${myProjects.length}개` },
-    { label: '태스크 완료', value: `${taskRate}%` },
+    { label: '협업 점수',  value: avgScore.toFixed(1),         highlight: true  },
+    { label: '받은 평가',  value: `${receivedEvals.length}건`               },
+    { label: '프로젝트',   value: `${projects.length}개`                    },
+    { label: '태스크 완료', value: `${taskRate}%`                           },
   ];
+
+  if (loading) return <div style={{ padding: 24, color: 'var(--text-tertiary)' }}>불러오는 중...</div>;
 
   return (
     <div style={{ padding: '20px 16px' }} className="md-page-padding">
@@ -291,7 +394,6 @@ export default function ProfilePage() {
         marginBottom: 20,
         overflow: 'hidden',
       }}>
-        {/* 그린 배너 */}
         <div style={{
           height: 80,
           background: 'linear-gradient(135deg, var(--green) 0%, var(--green-mid) 100%)',
@@ -304,7 +406,6 @@ export default function ProfilePage() {
         </div>
 
         <div style={{ padding: '0 24px 24px' }}>
-          {/* 아바타 */}
           <div style={{ marginTop: -32, marginBottom: 16 }}>
             <div style={{
               width: 64, height: 64, borderRadius: 16,
@@ -314,22 +415,20 @@ export default function ProfilePage() {
               fontSize: 22, fontWeight: 800, color: '#fff',
               position: 'relative', zIndex: 1,
             }}>
-              {currentUser.name[0]}
+              {profile?.name[0] ?? '?'}
             </div>
           </div>
 
-          {/* 이름 + 학과 */}
           <div style={{ marginBottom: 12 }}>
             <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.4px', marginBottom: 4 }}>
-              {currentUser.name}
+              {profile?.name ?? ''}
             </div>
             <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-              숭실대학교 · {currentUser.department} · {currentUser.grade}학년
+              숭실대학교 · {profile?.department ?? ''}
             </div>
           </div>
 
-          {/* 자기소개 */}
-          <div style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 20 }}>
             {editingBio ? (
               <div>
                 <textarea
@@ -348,14 +447,17 @@ export default function ProfilePage() {
                 />
                 <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                   <button
-                    onClick={() => { setBio(tempBio); setEditingBio(false); }}
+                    onClick={handleSaveBio}
+                    disabled={bioSaving}
                     style={{
-                      padding: '6px 16px', background: 'var(--green)', color: '#fff',
-                      border: 'none', borderRadius: 'var(--radius-sm)',
-                      fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                      padding: '6px 16px',
+                      background: bioSaving ? 'var(--text-tertiary)' : 'var(--green)',
+                      color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)',
+                      fontSize: 13, fontWeight: 600,
+                      cursor: bioSaving ? 'not-allowed' : 'pointer',
                     }}
                   >
-                    저장
+                    {bioSaving ? '저장 중...' : '저장'}
                   </button>
                   <button
                     onClick={() => { setTempBio(bio); setEditingBio(false); }}
@@ -371,8 +473,8 @@ export default function ProfilePage() {
               </div>
             ) : (
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, flex: 1 }}>
-                  {bio}
+                <p style={{ fontSize: 13, color: bio ? 'var(--text-secondary)' : 'var(--text-tertiary)', lineHeight: 1.6, flex: 1 }}>
+                  {bio || '자기소개를 추가해보세요'}
                 </p>
                 <button
                   onClick={() => { setTempBio(bio); setEditingBio(true); }}
@@ -390,22 +492,6 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {/* 스킬 태그 */}
-          <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 20 }}>
-            {currentUser.skills.map(skill => (
-              <span key={skill} style={{
-                fontSize: 12, fontWeight: 500,
-                color: 'var(--text-secondary)',
-                background: 'var(--surface2)',
-                border: '0.5px solid var(--border)',
-                borderRadius: 6, padding: '4px 10px',
-              }}>
-                {skill}
-              </span>
-            ))}
-          </div>
-
-          {/* 통계 바 */}
           <div style={{
             display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
             background: 'var(--surface2)',
@@ -449,30 +535,37 @@ export default function ProfilePage() {
                 협업 능력 평가
               </div>
               <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-                {myReviews.length}명의 동료가 평가한 결과예요
+                {receivedEvals.length}명의 동료가 평가한 결과예요
               </div>
             </div>
             <CircularScore score={avgScore} />
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {sortedSkills.map((rating, i) => (
-              <SkillBar key={rating.tag} rating={rating} rank={i} />
-            ))}
-          </div>
-
-          <div style={{
-            marginTop: 20, padding: '12px 16px',
-            background: 'var(--green-light)', borderRadius: 'var(--radius-md)',
-            display: 'flex', alignItems: 'center', gap: 10,
-          }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M8 1l1.8 3.6L14 5.5l-3 2.9.7 4.1L8 10.4l-3.7 2.1.7-4.1L2 5.5l4.2-.9L8 1z" fill="var(--green)" />
-            </svg>
-            <span style={{ fontSize: 13, color: 'var(--green-dark)', fontWeight: 500 }}>
-              <strong>{sortedSkills[0]?.tag}</strong>이(가) 가장 높게 평가되었어요 ({sortedSkills[0]?.score.toFixed(1)}점)
-            </span>
-          </div>
+          {sortedSkills.length > 0 ? (
+            <>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {sortedSkills.map((rating, i) => (
+                  <SkillBar key={rating.tag} rating={rating} rank={i} />
+                ))}
+              </div>
+              <div style={{
+                marginTop: 20, padding: '12px 16px',
+                background: 'var(--green-light)', borderRadius: 'var(--radius-md)',
+                display: 'flex', alignItems: 'center', gap: 10,
+              }}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M8 1l1.8 3.6L14 5.5l-3 2.9.7 4.1L8 10.4l-3.7 2.1.7-4.1L2 5.5l4.2-.9L8 1z" fill="var(--green)" />
+                </svg>
+                <span style={{ fontSize: 13, color: 'var(--green-dark)', fontWeight: 500 }}>
+                  <strong>{sortedSkills[0]?.tag}</strong>이(가) 가장 높게 평가되었어요 ({sortedSkills[0]?.score.toFixed(1)}점)
+                </span>
+              </div>
+            </>
+          ) : (
+            <div style={{ fontSize: 13, color: 'var(--text-tertiary)', padding: '8px 0' }}>
+              완료된 프로젝트의 동료 평가가 쌓이면 여기에 표시돼요
+            </div>
+          )}
         </div>
 
         {/* 참여 프로젝트 */}
@@ -487,13 +580,15 @@ export default function ProfilePage() {
               참여 프로젝트
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-              총 {myProjects.length}개의 프로젝트에 참여했어요
+              총 {projects.length}개의 프로젝트에 참여했어요
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {myProjects.map(p => <ProjectRow key={p.id} project={p} />)}
+            {projects.map(p => (
+              <ProjectRow key={p.id} project={p} role={projectRoles[p.id] ?? '멤버'} />
+            ))}
           </div>
-          {myProjects.length === 0 && (
+          {projects.length === 0 && (
             <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-tertiary)', fontSize: 13 }}>
               참여한 프로젝트가 없어요
             </div>
@@ -517,16 +612,22 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {myReviews.length === 0 ? (
+        {receivedEvals.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-tertiary)', fontSize: 13 }}>
             받은 평가가 없어요
           </div>
         ) : (
           <>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {displayedReviews.map(r => <ReviewCard key={r.id} review={r} />)}
+              {displayedEvals.map(ev => (
+                <ReviewCard
+                  key={ev.id}
+                  ev={ev}
+                  projectTitle={projectTitleById[String(ev.projectId)] ?? '프로젝트'}
+                />
+              ))}
             </div>
-            {myReviews.length > 3 && !showAllReviews && (
+            {receivedEvals.length > 3 && !showAllReviews && (
               <button
                 onClick={() => setShowAllReviews(true)}
                 style={{
@@ -535,7 +636,7 @@ export default function ProfilePage() {
                   color: 'var(--text-secondary)', fontSize: 14, fontWeight: 700, cursor: 'pointer',
                 }}
               >
-                + 이전 평가 {myReviews.length - 3}건 더 보기
+                + 이전 평가 {receivedEvals.length - 3}건 더 보기
               </button>
             )}
           </>

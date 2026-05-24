@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { projectsApi, toProject } from '../api/projects';
-import type { Project } from '../types';
+import { tasksApi, toTask } from '../api/tasks';
+import { teamApi, toProjectMember } from '../api/team';
+import { useAuth } from '../contexts/AuthContext';
+import type { Project, Task } from '../types';
 import { ProjectCard } from '../components/ui/ProjectCard';
 
 type Filter = 'all' | 'in_progress' | 'completed';
@@ -12,8 +15,10 @@ const TAB_LABELS: Record<Filter, string> = {
 };
 
 export default function ProjectsPage() {
+  const { user } = useAuth();
   const [filter, setFilter] = useState<Filter>('all');
   const [projects, setProjects] = useState<Project[]>([]);
+  const [tasksMap, setTasksMap] = useState<Record<string, Task[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -21,6 +26,48 @@ export default function ProjectsPage() {
   const [form, setForm] = useState({ name: '', description: '' });
   const [creating, setCreating] = useState(false);
   const [formError, setFormError] = useState('');
+
+  const [joinModalOpen, setJoinModalOpen] = useState(false);
+  const [joinCode, setJoinCode] = useState('');
+  const [joining, setJoining] = useState(false);
+  const [joinError, setJoinError] = useState('');
+
+  async function handleJoin(e: React.FormEvent) {
+    e.preventDefault();
+    if (!joinCode.trim()) { setJoinError('초대코드를 입력해주세요.'); return; }
+    setJoining(true);
+    setJoinError('');
+    try {
+      await teamApi.join(joinCode.trim());
+      const projectList = await projectsApi.list();
+      const mapped = projectList.map(toProject);
+      const [taskResults, memberResults] = await Promise.all([
+        Promise.all(mapped.map(p =>
+          tasksApi.list(Number(p.id))
+            .then(t => ({ id: p.id, tasks: t.map(toTask) }))
+            .catch(() => ({ id: p.id, tasks: [] as Task[] }))
+        )),
+        Promise.all(mapped.map(p =>
+          teamApi.members(Number(p.id))
+            .then(m => ({ id: p.id, members: m.map(toProjectMember) }))
+            .catch(() => ({ id: p.id, members: [] }))
+        )),
+      ]);
+      const tm: Record<string, Task[]> = {};
+      taskResults.forEach(({ id, tasks }) => { tm[id] = tasks; });
+      setTasksMap(tm);
+      setProjects(mapped.map(p => ({
+        ...p,
+        members: memberResults.find(r => r.id === p.id)?.members ?? [],
+      })));
+      setJoinModalOpen(false);
+      setJoinCode('');
+    } catch (err) {
+      setJoinError(err instanceof Error ? err.message : '참가에 실패했습니다.');
+    } finally {
+      setJoining(false);
+    }
+  }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -30,6 +77,7 @@ export default function ProjectsPage() {
     try {
       const res = await projectsApi.create(form.name.trim(), form.description.trim());
       setProjects(prev => [toProject(res), ...prev]);
+      setTasksMap(prev => ({ ...prev, [String(res.id)]: [] }));
       setModalOpen(false);
       setForm({ name: '', description: '' });
     } catch (err) {
@@ -40,14 +88,43 @@ export default function ProjectsPage() {
   }
 
   useEffect(() => {
-    projectsApi.list()
-      .then(res => setProjects(res.map(toProject)))
-      .catch(err => setError(err.message))
-      .finally(() => setLoading(false));
+    async function load() {
+      try {
+        const projectList = await projectsApi.list();
+        const mapped = projectList.map(toProject);
+
+        const [taskResults, memberResults] = await Promise.all([
+          Promise.all(mapped.map(p =>
+            tasksApi.list(Number(p.id))
+              .then(t => ({ id: p.id, tasks: t.map(toTask) }))
+              .catch(() => ({ id: p.id, tasks: [] as Task[] }))
+          )),
+          Promise.all(mapped.map(p =>
+            teamApi.members(Number(p.id))
+              .then(m => ({ id: p.id, members: m.map(toProjectMember) }))
+              .catch(() => ({ id: p.id, members: [] }))
+          )),
+        ]);
+
+        const tm: Record<string, Task[]> = {};
+        taskResults.forEach(({ id, tasks }) => { tm[id] = tasks; });
+        setTasksMap(tm);
+
+        setProjects(mapped.map(p => ({
+          ...p,
+          members: memberResults.find(r => r.id === p.id)?.members ?? [],
+        })));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : '불러오기 실패');
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
   }, []);
 
   const inProgressProjects = projects.filter(p => p.status === 'in_progress');
-  const completedProjects  = projects.filter(p => p.status === 'completed');
+  const completedProjects  = projects.filter(p => p.status === 'completed' || p.status === 'evaluation_completed');
 
   const filtered =
     filter === 'all'         ? projects :
@@ -71,18 +148,32 @@ export default function ProjectsPage() {
             참여 중인 프로젝트와 종료된 프로젝트를 한곳에서 관리해요
           </p>
         </div>
-        <button
-          onClick={() => setModalOpen(true)}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            background: 'var(--green)', color: '#fff',
-            border: 'none', borderRadius: 'var(--radius-md)',
-            padding: '10px 18px', fontSize: 14, fontWeight: 600,
-            cursor: 'pointer', flexShrink: 0,
-          }}
-        >
-          + 새 프로젝트
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => setJoinModalOpen(true)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              background: 'var(--surface)', color: 'var(--text-secondary)',
+              border: '1px solid var(--border2)', borderRadius: 'var(--radius-md)',
+              padding: '10px 18px', fontSize: 14, fontWeight: 600,
+              cursor: 'pointer', flexShrink: 0,
+            }}
+          >
+            🔗 코드로 참가
+          </button>
+          <button
+            onClick={() => setModalOpen(true)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              background: 'var(--green)', color: '#fff',
+              border: 'none', borderRadius: 'var(--radius-md)',
+              padding: '10px 18px', fontSize: 14, fontWeight: 600,
+              cursor: 'pointer', flexShrink: 0,
+            }}
+          >
+            + 새 프로젝트
+          </button>
+        </div>
       </div>
 
       {/* ── 통계 바 ── */}
@@ -123,11 +214,61 @@ export default function ProjectsPage() {
             );
           })}
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button style={ghostBtn}>필터</button>
-          <button style={ghostBtn}>최근 활동 ↓</button>
-        </div>
       </div>
+
+      {/* ── 코드로 참가 모달 ── */}
+      {joinModalOpen && (
+        <div
+          onClick={() => { setJoinModalOpen(false); setJoinCode(''); setJoinError(''); }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '28px 32px', width: 400, boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}
+          >
+            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>코드로 프로젝트 참가</h2>
+            <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 20, lineHeight: 1.6 }}>
+              팀장에게 받은 초대코드를 입력하세요
+            </p>
+            <form onSubmit={handleJoin} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <input
+                type="text"
+                value={joinCode}
+                onChange={e => { setJoinCode(e.target.value); setJoinError(''); }}
+                placeholder="초대코드 입력"
+                autoFocus
+                style={inputStyle}
+              />
+              {joinError && (
+                <div style={{ fontSize: 13, color: 'var(--coral)', padding: '8px 12px', background: 'var(--coral-light)', borderRadius: 'var(--radius-sm)' }}>
+                  {joinError}
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                <button
+                  type="submit"
+                  disabled={joining}
+                  style={{
+                    flex: 1, padding: '11px 0',
+                    background: joining ? 'var(--text-tertiary)' : 'var(--green)',
+                    color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)',
+                    fontSize: 14, fontWeight: 600, cursor: joining ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {joining ? '참가 중...' : '참가하기'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setJoinModalOpen(false); setJoinCode(''); setJoinError(''); }}
+                  style={{ padding: '11px 20px', background: 'var(--surface2)', color: 'var(--text-secondary)', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+                >
+                  취소
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* ── 새 프로젝트 모달 ── */}
       {modalOpen && (
@@ -230,11 +371,11 @@ export default function ProjectsPage() {
             <ProjectCard
               key={p.id}
               project={p}
-              tasks={[]}
+              tasks={tasksMap[p.id] ?? []}
               reviews={[]}
               activities={[]}
               allUsers={[]}
-              currentUserId=""
+              currentUserId={user?.id ?? ''}
             />
           ))}
         </div>
@@ -270,13 +411,4 @@ const inputStyle: React.CSSProperties = {
   color: 'var(--text-primary)',
   outline: 'none',
   fontFamily: 'inherit',
-};
-
-const ghostBtn: React.CSSProperties = {
-  padding: '7px 14px',
-  borderRadius: 'var(--radius-sm)',
-  border: '0.5px solid var(--border2)',
-  background: 'var(--surface)',
-  color: 'var(--text-secondary)',
-  fontSize: 12, fontWeight: 500, cursor: 'pointer',
 };
