@@ -161,3 +161,56 @@ body {
     gap: 10px;
   }
 }
+
+/* ─── Score Slider ─── */
+.score-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.score-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2.5px solid var(--green);
+  box-shadow: 0 1px 5px rgba(29, 158, 117, 0.25);
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.score-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+.score-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2.5px solid var(--green);
+  box-shadow: 0 1px 5px rgba(29, 158, 117, 0.25);
+  cursor: pointer;
+}
+
+/* ─── Evaluate Layout ─── */
+.evaluate-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+@media (min-width: 900px) {
+  .evaluate-layout {
+    grid-template-columns: 1fr 280px;
+    gap: 20px;
+    align-items: start;
+  }
+}

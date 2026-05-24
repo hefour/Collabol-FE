@@ -159,32 +159,18 @@ export function ProjectCard({ project, tasks, reviews, activities, allUsers, cur
         <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3, flex: 1 }}>
           {project.title}
         </h3>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
-          <span
-            style={{
-              ...badgeStyle,
-              padding: '4px 10px',
-              borderRadius: 20,
-              fontSize: 11,
-              fontWeight: 600,
-            }}
-          >
-            {isCompleted ? '완료' : '진행 중'}
-          </span>
-          <button
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: 'var(--text-tertiary)',
-              fontSize: 16,
-              lineHeight: 1,
-              padding: '2px 4px',
-            }}
-          >
-            ···
-          </button>
-        </div>
+        <span
+          style={{
+            ...badgeStyle,
+            padding: '4px 10px',
+            borderRadius: 20,
+            fontSize: 11,
+            fontWeight: 600,
+            flexShrink: 0,
+          }}
+        >
+          {isCompleted ? '완료' : '진행 중'}
+        </span>
       </div>
 
       {/* ── 설명 ── */}
@@ -316,7 +302,7 @@ export function ProjectCard({ project, tasks, reviews, activities, allUsers, cur
               whiteSpace: 'nowrap',
             }}
           >
-            {isCompleted ? '상세 보기 →' : '대시보드 열기 →'}
+            상세 보기 →
           </button>
         </div>
       </div>

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { projectsApi, toProject } from '../api/projects';
+import { evaluationsApi, toReview } from '../api/evaluations';
 import { tasksApi, toTask } from '../api/tasks';
 import { teamApi, toProjectMember } from '../api/team';
 import { useAuth } from '../contexts/AuthContext';
-import type { Project, Task } from '../types';
+import type { Project, Task, ProjectStatus, Review } from '../types';
 import { ProjectCard } from '../components/ui/ProjectCard';
 
 type Filter = 'all' | 'in_progress' | 'completed';
@@ -21,6 +22,8 @@ export default function ProjectsPage() {
   const [tasksMap, setTasksMap] = useState<Record<string, Task[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const [reviewsMap, setReviewsMap] = useState<Record<string, Review[]>>({});
 
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState({ name: '', description: '' });
@@ -101,8 +104,8 @@ export default function ProjectsPage() {
           )),
           Promise.all(mapped.map(p =>
             teamApi.members(Number(p.id))
-              .then(m => ({ id: p.id, members: m.map(toProjectMember) }))
-              .catch(() => ({ id: p.id, members: [] }))
+              .then(m => ({ id: p.id, members: m.map(toProjectMember), count: m.length }))
+              .catch(() => ({ id: p.id, members: [], count: 0 }))
           )),
         ]);
 
@@ -110,8 +113,40 @@ export default function ProjectsPage() {
         taskResults.forEach(({ id, tasks }) => { tm[id] = tasks; });
         setTasksMap(tm);
 
+        // 완료된 프로젝트의 평가 목록 로드
+        const completedIds = mapped
+          .filter(p => p.status === 'completed' || p.status === 'evaluation_completed')
+          .map(p => p.id);
+
+        const evalResults = await Promise.all(
+          completedIds.map(id =>
+            evaluationsApi.list(Number(id))
+              .then(evals => ({ id, evals }))
+              .catch(() => ({ id, evals: [] }))
+          )
+        );
+
+        const rm: Record<string, Review[]> = {};
+        // 평가가 전부 완료된 프로젝트 id 집합
+        const evalCompletedSet = new Set<string>();
+
+        evalResults.forEach(({ id, evals }) => {
+          rm[id] = evals.map(toReview);
+          const memberCount = memberResults.find(r => r.id === id)?.count ?? 0;
+          const expected = memberCount * (memberCount - 1);
+          // expected > 0 이고 실제 제출 수가 충족되면 평가 완료로 처리
+          if (expected > 0 && evals.length >= expected) {
+            evalCompletedSet.add(id);
+          }
+        });
+
+        setReviewsMap(rm);
         setProjects(mapped.map(p => ({
           ...p,
+          // 평가 완료 조건을 만족하면 프론트에서 status 오버라이드
+          status: evalCompletedSet.has(p.id)
+            ? ('evaluation_completed' as ProjectStatus)
+            : p.status,
           members: memberResults.find(r => r.id === p.id)?.members ?? [],
         })));
       } catch (err) {
@@ -138,7 +173,7 @@ export default function ProjectsPage() {
   };
 
   return (
-    <div style={{ padding: '20px 16px', maxWidth: 1100 }} className="md-page-padding">
+    <div style={{ padding: '20px 16px' }} className="md-page-padding">
 
       {/* ── 헤더 ── */}
       <div className="page-header">
@@ -372,7 +407,7 @@ export default function ProjectsPage() {
               key={p.id}
               project={p}
               tasks={tasksMap[p.id] ?? []}
-              reviews={[]}
+              reviews={reviewsMap[p.id] ?? []}
               activities={[]}
               allUsers={[]}
               currentUserId={user?.id ?? ''}

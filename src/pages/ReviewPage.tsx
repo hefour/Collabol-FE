@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { projectsApi, toProject } from "../api/projects";
 import { evaluationsApi, type EvaluationResponse } from "../api/evaluations";
 import { teamApi, type TeamMemberResponse } from "../api/team";
+import { userApi } from "../api/user";
 import { useAuth } from "../contexts/AuthContext";
 import type { Project } from "../types";
 
@@ -59,6 +60,7 @@ interface PendingItem {
 
 export default function ReviewPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [projectFilter, setProjectFilter] = useState("all");
   const [showAllCompleted, setShowAllCompleted] = useState(false);
@@ -74,7 +76,10 @@ export default function ReviewPage() {
   useEffect(() => {
     async function load() {
       try {
-        const projectList = await projectsApi.list();
+        const [projectList, me] = await Promise.all([
+          projectsApi.list(),
+          userApi.me(),
+        ]);
         const mapped = projectList.map(toProject);
         setProjects(mapped);
 
@@ -91,12 +96,16 @@ export default function ReviewPage() {
         const pending: PendingItem[] = [];
         const completed: EvaluationResponse[] = [];
 
-        projectData.forEach(([members, myEvals], i) => {
+        projectData.forEach(([members, allEvals], i) => {
           const project = completedProjects[i];
+          // 내가 제출한 평가만 필터링
+          const myEvals = (allEvals as EvaluationResponse[]).filter(
+            e => e.reviewer.userId === me.id
+          );
           const evaluatedIds = new Set(myEvals.map(e => e.reviewee.userId));
 
           (members as TeamMemberResponse[]).forEach(m => {
-            if (m.email !== user?.email && !evaluatedIds.has(m.userId)) {
+            if (m.userId !== me.id && !evaluatedIds.has(m.userId)) {
               pending.push({
                 projectId: project.id,
                 projectTitle: project.title,
@@ -122,7 +131,8 @@ export default function ReviewPage() {
       }
     }
     load();
-  }, [user?.email]);
+  // location.key가 바뀔 때마다(페이지 재진입 시) 재조회
+  }, [location.key]);
 
   const pendingList = useMemo(
     () => pendingItems.filter(p => projectFilter === "all" || p.projectId === projectFilter),
@@ -361,7 +371,6 @@ export default function ReviewPage() {
                 {completedList.length}
               </span>
             </p>
-            <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>최근순 ▾</span>
           </div>
 
           {completedList.length === 0 ? (

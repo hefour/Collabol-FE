@@ -31,8 +31,8 @@ const ReviewIcon = () => (
 const navItems = [
   { to: '/home',     label: '홈',      icon: <HomeIcon /> },
   { to: '/projects', label: '프로젝트', icon: <ProjectsIcon /> },
-  { to: '/profile',  label: '프로필',   icon: <ProfileIcon /> },
   { to: '/review',   label: '동료 평가', icon: <ReviewIcon /> },
+  { to: '/profile',  label: '프로필',   icon: <ProfileIcon /> },
 ];
 
 export default function MobileNav() {
